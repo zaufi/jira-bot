@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2015 Alex Turbov <i.zaufi@gmail.com>
+#
+# JIRA Bot is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# JIRA Bot is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import argparse
+import jira
+import os
+import sys
+
+
+class Application(object):
+    def __init__(self):
+
+        parser = argparse.ArgumentParser(description='JIRA Issue Creation Bot')
+        parser.add_argument(
+            '-v'
+          , '--verbose'
+          , action='store_true'
+          , help='verbose output'
+          )
+        parser.add_argument(
+            '-s'
+          , '--server'
+          , help='JIRA server URI'
+          )
+        parser.add_argument(
+            '-u'
+          , '--username'
+          , help='JIRA account name'
+          )
+        parser.add_argument(
+            '-p'
+          , '--password'
+          , help='JIRA account password'
+          )
+        self.args = parser.parse_args()
+
+        # Make some SPAM
+        if self.args.verbose:
+            print('[DEBUG] CLI options: {}'.format(repr(self.args)))
+        # Args seem Ok, ready to run
+
+
+    def run(self):
+
+        # Set exit code to SUCCESS
+        return os.EX_OK
+
+
+#
+# Main entry point
+#
+if __name__ == "__main__":
+    try:
+        a = Application()
+        sys.exit(a.run())
+    except KeyboardInterrupt:
+        sys.exit(1)
+    except RuntimeError as ex:
+        print('Error: {}'.format(ex), file=sys.stderr)
+        sys.exit(1)
