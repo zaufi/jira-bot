@@ -17,6 +17,7 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+import configparser
 import jira
 import os
 import sys
@@ -24,8 +25,51 @@ import sys
 
 class Application(object):
     def __init__(self):
+        # Try to parse config file option first
+        config_parser = argparse.ArgumentParser(
+            description='JIRA Issue Creation Bot'
+          , add_help=False
+          )
+        config_parser.add_argument(
+            "-c"
+          , "--config-file"
+          , help="specify config file to use"
+          , metavar="FILE"
+          )
+        args, remaining_argv = config_parser.parse_known_args()
 
-        parser = argparse.ArgumentParser(description='JIRA Issue Creation Bot')
+        defaults = {
+            "server" : None
+          , "verbose" : True
+          }
+
+        # Collect configuration data from various places:
+        configs = list()
+        #  - is there any config file provided via CLI?
+        if args.config_file:
+            # Ok, lets use it
+            configs.append(self._parse_config_file(args.config_file))
+        else:
+            # Heh, then try to get config data from system-wide and per user config files
+            for config_file in ['/etc/jira-bot/jira-bot.conf', os.path.join(os.environ['HOME'], '.jira-botrc')]:
+                if os.path.isfile(config_file):
+                    configs.append(self._parse_config_file(config_file))
+
+        # Merge configuration data
+        self.config = dict()
+        for cfg in configs:
+            for section in cfg.sections():
+                self.config[section] = dict(cfg[section].items())
+
+        # Ok, now try to parse rest CLI options
+        parser = argparse.ArgumentParser(
+            # Inherit options from config_parser
+            parents=[config_parser]
+            # print script description with -h/--help
+          , description=__doc__
+            # Don't mess with format of description
+          , formatter_class=argparse.RawDescriptionHelpFormatter
+          )
         parser.add_argument(
             '-v'
           , '--verbose'
@@ -47,12 +91,46 @@ class Application(object):
           , '--password'
           , help='JIRA account password'
           )
-        self.args = parser.parse_args()
+        parser.add_argument(
+            '-j'
+          , '--project'
+          , help='JIRA project to use'
+          )
+        args = parser.parse_args()
+
+        # Merge CLI options w/ parsed configuration
+        target_section = 'default'
+
+        # Check if `--server` is provided
+        if args.server is not None:
+            # Override used server section
+            target_section = args.server
+            self.config['default']['server'] = args.server
+        # Check if `--username` is provided
+        if args.username is not None:
+            self.config[target_section]['username'] = args.username
+            # ATTENTION Reset password
+            self.config[target_section]['password'] = None
+        # Check if `--password` is provided
+        if args.password is not None:
+            self.config[target_section]['password'] = args.password
+        # Check if `--project` is provided
+        if args.project is not None:
+            self.config[target_section]['project'] = args.project
+        # Check if `--verbose` is provided
+        if args.verbose is not None:
+            self.config['default']['verbose'] = args.verbose
 
         # Make some SPAM
-        if self.args.verbose:
-            print('[DEBUG] CLI options: {}'.format(repr(self.args)))
+        if args.verbose:
+            print('[DEBUG] CLI options: {}'.format(repr(self.config)))
         # Args seem Ok, ready to run
+
+
+    def _parse_config_file(self, config_file):
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read([config_file])
+        return config
 
 
     def run(self):
