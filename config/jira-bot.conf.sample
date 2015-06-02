@@ -1,0 +1,8 @@
+[default]
+server=https://<JIRA-server>
+verbose=1
+
+[https://onixsbiz.jira.com]
+username=<login>
+password=<pass>
+project=<DEFAULT-PROJECT-NAME>

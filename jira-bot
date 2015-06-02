@@ -52,6 +52,7 @@ class Application(object):
         else:
             # Heh, then try to get config data from system-wide and per user config files
             for config_file in ['/etc/jira-bot/jira-bot.conf', os.path.join(os.environ['HOME'], '.jira-botrc')]:
+                # TODO Make sure that config file can't be read only by owner!
                 if os.path.isfile(config_file):
                     configs.append(self._parse_config_file(config_file))
 
@@ -96,6 +97,27 @@ class Application(object):
           , '--project'
           , help='JIRA project to use'
           )
+        parser.add_argument(
+            '-m'
+          , '--summary'
+          , required=True
+          , help='summary text for the issue'
+          )
+        parser.add_argument(
+            '-f'
+          , '--attachment'
+          , nargs='+'
+          , type=argparse.FileType('rb')
+          , help='attach a given file to a new issue'
+          )
+        parser.add_argument(
+            'input'
+          , nargs='?'
+          , type=argparse.FileType('r')
+          , default=sys.stdin
+          , help='input file with issue description (STDIN if omitted)'
+          )
+
         args = parser.parse_args()
 
         # Merge CLI options w/ parsed configuration
@@ -106,25 +128,51 @@ class Application(object):
             # Override used server section
             target_section = args.server
             self.config['default']['server'] = args.server
+        elif 'server'  in self.config['default']:
+            target_section = self.config['default']['server']
+        else:
+            raise RuntimeError('JIRA server URI is not provided')
+
+        if target_section not in self.config:
+            self.config[target_section] = dict()
+
         # Check if `--username` is provided
         if args.username is not None:
             self.config[target_section]['username'] = args.username
             # ATTENTION Reset password
             self.config[target_section]['password'] = None
+
         # Check if `--password` is provided
         if args.password is not None:
             self.config[target_section]['password'] = args.password
+
         # Check if `--project` is provided
         if args.project is not None:
             self.config[target_section]['project'] = args.project
+
+        # Check if `--summary` is provided
+        if args.summary is not None:
+            self.config[target_section]['summary'] = args.summary
+        else:
+            raise RuntimeError('Issue summary is not provided')
+
+        # Check if `--attachment` is provided
+        self.config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
+
         # Check if `--verbose` is provided
         if args.verbose is not None:
-            self.config['default']['verbose'] = args.verbose
+            self.config['default']['verbose'] = 'true'
 
-        # Make some SPAM
-        if args.verbose:
-            print('[DEBUG] CLI options: {}'.format(repr(self.config)))
+        # Read description data
+        self.config[target_section]['description'] = args.input.read().strip()
+
+        # Setting self.verbose to be a 'shortcut' for corresponding configuration option
+        self.verbose = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose'])
+        # TODO Validate options
+
         # Args seem Ok, ready to run
+        #print(repr(self.config))
+        #sys.exit(1)
 
 
     def _parse_config_file(self, config_file):
@@ -133,7 +181,65 @@ class Application(object):
         return config
 
 
+    def _try_get_bool(self, text):
+        text = text.strip()
+        if text == 'yes' or text == 'true' or text == '1':
+            return True
+        if text == 'no' or text == 'false' or text == '0':
+            return False
+
+        raise RuntimeError('Invalid boolean value: "{}"'.format(text))
+
+
     def run(self):
+        server = self.config['default']['server']
+        # Make some SPAM
+        if self.verbose:
+            print(
+                '[DEBUG] Connecting to {} using {} {}'.format(
+                    server
+                  , 'login "{}"'.format(self.config[server]['username']) if 'username' in self.config[server] else 'anonymous login'
+                  , 'and password provided' if self.config[server]['password'] is not None else 'w/o password'
+                  )
+              )
+        if 'username' in self.config[server]:
+            auth=(self.config[server]['username'], self.config[server]['password'])
+
+        # Connecting...
+        conn = jira.JIRA(options={'server': server}, basic_auth=auth)
+        # Make sure the project specified is really exists
+        prj = conn.project(self.config[server]['project'])
+        if prj is None:
+            raise RuntimeError('Specified project "" not found'.format(self.config[server]['project']))
+
+        if self.verbose:
+            print('[DEBUG] Got project id for {}: {}'.format(self.config[server]['project'], prj.id))
+
+        # Prepare data for a new issue
+        issue_dict = {
+            'project': {'id': prj.id}
+          , 'summary': self.config[server]['summary']
+          , 'description': self.config[server]['description']
+          , 'issuetype': {'name': 'Bug'}
+          }
+        if self.verbose:
+            print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)))
+
+        # Create it!
+        issue = conn.create_issue(fields=issue_dict)
+        if issue is None:
+            # TODO More diagnostic!
+            raise RuntimeError('Fail to add an issue')
+
+        if self.verbose:
+            print('[DEBUG] Issue {} created'.format(issue.key))
+
+        # Attach files if any
+        if self.config[server]['attachments'] is not None:
+            for a in self.config[server]['attachments']:
+                if self.verbose:
+                    print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key))
+                conn.add_attachment(issue, attachment=a)
 
         # Set exit code to SUCCESS
         return os.EX_OK
