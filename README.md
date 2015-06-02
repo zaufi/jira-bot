@@ -15,7 +15,7 @@ angle brackets to your data:
     server=https://<JIRA-server>
     verbose=1
 
-    [https://onixsbiz.jira.com]
+    [https://<JIRA-server>]
     username=<login>
     password=<pass>
     project=<DEFAULT-PROJECT-NAME>
