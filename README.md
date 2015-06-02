@@ -24,6 +24,14 @@ Note, that system-wide and per user config files are **additive** -- that means
 you can specify _default server_ in system-wide config, and particular credentials
 at `.jira-botrc` **at same section**.
 
-Default server (i.e. when `--server` CLI option is omitted) would be taked from
+Default server (i.e. when `--server` CLI option is omitted) would be taken from
 `default` section of config file. **Per user configuration will take precedence
-over the system-wide and CLI options win always**.
+over the system-wide, but CLI options always win**.
+
+Examples:
+
+    # Using pipe
+    $ echo 'Bug description...' | jira-bot -v -m 'Bug summary' -f attach.file.1 attach.file.2
+
+    # Using file w/ description
+    $ jira-bot -v -m 'Bug summary' -f attach.file.1 attach.file.2 -- description.txt
