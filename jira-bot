@@ -78,6 +78,12 @@ class Application(object):
           , help='verbose output'
           )
         parser.add_argument(
+            '-w'
+          , '--show-issue-uri'
+          , action='store_true'
+          , help='on exit print URI of the issue created'
+          )
+        parser.add_argument(
             '-s'
           , '--server'
           , help='JIRA server URI'
@@ -158,6 +164,12 @@ class Application(object):
 
         # Check if `--attachment` is provided
         self.config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
+
+        # Check if `--show-issue-url` is provided
+        if args.show_issue_uri is not None:
+            self.config['default']['show-issue-uri'] = True
+        else:
+            self.config['default']['show-issue-uri'] = False
 
         # Check if `--verbose` is provided
         if args.verbose is not None:
@@ -240,6 +252,10 @@ class Application(object):
                 if self.verbose:
                     print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key))
                 conn.add_attachment(issue, attachment=a)
+
+        # Print URL to browse created task if needed
+        if self.config['default']['show-issue-uri']:
+            print('{}/browse/{}'.format(server, issue.key))
 
         # Set exit code to SUCCESS
         return os.EX_OK
