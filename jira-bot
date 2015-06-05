@@ -172,14 +172,14 @@ class Application(object):
             self.config['default']['show-issue-uri'] = False
 
         # Check if `--verbose` is provided
-        if args.verbose is not None:
+        if args.verbose is not None and args.verbose:
             self.config['default']['verbose'] = 'true'
 
         # Read description data
         self.config[target_section]['description'] = args.input.read().strip()
 
         # Setting self.verbose to be a 'shortcut' for corresponding configuration option
-        self.verbose = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose'])
+        self.verbose = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
         # TODO Validate options
 
         # Args seem Ok, ready to run
