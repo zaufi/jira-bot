@@ -40,7 +40,7 @@ class Application(object):
 
         defaults = {
             "server" : None
-          , "verbose" : True
+          , "verbose" : False
           }
 
         # Collect configuration data from various places:
@@ -213,6 +213,7 @@ class Application(object):
                   , 'login "{}"'.format(self.config[server]['username']) if 'username' in self.config[server] else 'anonymous login'
                   , 'and password provided' if self.config[server]['password'] is not None else 'w/o password'
                   )
+                , file=sys.stderr
               )
         if 'username' in self.config[server]:
             auth=(self.config[server]['username'], self.config[server]['password'])
@@ -225,7 +226,7 @@ class Application(object):
             raise RuntimeError('Specified project "" not found'.format(self.config[server]['project']))
 
         if self.verbose:
-            print('[DEBUG] Got project id for {}: {}'.format(self.config[server]['project'], prj.id))
+            print('[DEBUG] Got project id for {}: {}'.format(self.config[server]['project'], prj.id), file=sys.stderr)
 
         # Prepare data for a new issue
         issue_dict = {
@@ -235,7 +236,7 @@ class Application(object):
           , 'issuetype': {'name': 'Bug'}
           }
         if self.verbose:
-            print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)))
+            print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)), file=sys.stderr)
 
         # Create it!
         issue = conn.create_issue(fields=issue_dict)
@@ -244,13 +245,13 @@ class Application(object):
             raise RuntimeError('Fail to add an issue')
 
         if self.verbose:
-            print('[DEBUG] Issue {} created'.format(issue.key))
+            print('[DEBUG] Issue {} created'.format(issue.key), file=sys.stderr)
 
         # Attach files if any
         if self.config[server]['attachments'] is not None:
             for a in self.config[server]['attachments']:
                 if self.verbose:
-                    print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key))
+                    print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key), file=sys.stderr)
                 conn.add_attachment(issue, attachment=a)
 
         # Print URL to browse created task if needed
