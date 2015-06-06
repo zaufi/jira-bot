@@ -51,7 +51,10 @@ class Application(object):
             configs.append(self._parse_config_file(args.config_file))
         else:
             # Heh, then try to get config data from system-wide and per user config files
-            for config_file in ['/etc/jira-bot/jira-bot.conf', os.path.join(os.environ['HOME'], '.jira-botrc')]:
+            config_files = ['/etc/jira-bot/jira-bot.conf']
+            if 'HOME' in os.environ:
+                config_files.append(os.path.join(os.environ['HOME'], '.jira-botrc'))
+            for config_file in config_files:
                 # TODO Make sure that config file can't be read only by owner!
                 if os.path.isfile(config_file):
                     configs.append(self._parse_config_file(config_file))

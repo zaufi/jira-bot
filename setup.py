@@ -27,7 +27,7 @@ def readfile(filename):
     with open(filename, encoding='UTF-8') as f:
         return f.read()
 
-version = "1.3"
+version = "1.4"
 
 setup(
     name             = 'jira-bot'
