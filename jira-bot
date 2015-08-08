@@ -21,13 +21,14 @@ import configparser
 import jira
 import os
 import sys
+import urllib
 
 
 class Application(object):
     def __init__(self):
         # Try to parse config file option first
         config_parser = argparse.ArgumentParser(
-            description='JIRA Issue Creation Bot'
+            description='JIRA Issue Manipulation Bot'
           , add_help=False
           )
         config_parser.add_argument(
@@ -38,11 +39,6 @@ class Application(object):
           )
         args, remaining_argv = config_parser.parse_known_args()
 
-        defaults = {
-            "server" : None
-          , "verbose" : False
-          }
-
         # Collect configuration data from various places:
         configs = list()
         #  - is there any config file provided via CLI?
@@ -51,19 +47,20 @@ class Application(object):
             configs.append(self._parse_config_file(args.config_file))
         else:
             # Heh, then try to get config data from system-wide and per user config files
-            config_files = ['/etc/jira-bot/jira-bot.conf']
-            if 'HOME' in os.environ:
-                config_files.append(os.path.join(os.environ['HOME'], '.jira-botrc'))
+            config_files = ['/etc/jira-bot/jira-bot.conf', os.path.expanduser('~/.jira-botrc')]
             for config_file in config_files:
-                # TODO Make sure that config file can't be read only by owner!
+                # TODO Make sure that config file is read only by owner!
                 if os.path.isfile(config_file):
                     configs.append(self._parse_config_file(config_file))
 
-        # Merge configuration data
+        # Merge configuration data normalizing URIs in section names
         self.config = dict()
         for cfg in configs:
             for section in cfg.sections():
-                self.config[section] = dict(cfg[section].items())
+                normalized_section = self._normalize_uri(section)
+                if normalized_section not in self.config:
+                    self.config[normalized_section] = dict()
+                self.config[normalized_section].update(dict(cfg[section].items()))
 
         # Ok, now try to parse rest CLI options
         parser = argparse.ArgumentParser(
@@ -81,12 +78,6 @@ class Application(object):
           , help='verbose output'
           )
         parser.add_argument(
-            '-w'
-          , '--show-issue-uri'
-          , action='store_true'
-          , help='on exit print URI of the issue created'
-          )
-        parser.add_argument(
             '-s'
           , '--server'
           , help='JIRA server URI'
@@ -101,31 +92,91 @@ class Application(object):
           , '--password'
           , help='JIRA account password'
           )
-        parser.add_argument(
-            '-j'
-          , '--project'
-          , help='JIRA project to use'
+
+        subparsers = parser.add_subparsers(help='Available sub-commands:', dest='cmd')
+
+        create_parser = subparsers.add_parser(
+            'create'
+          , help="Create a new issue."
           )
-        parser.add_argument(
-            '-m'
+
+        create_parser.add_argument(
+            '-s'
           , '--summary'
           , required=True
-          , help='summary text for the issue'
+          , help='summary text for an issue'
           )
-        parser.add_argument(
+        create_parser.add_argument(
+            '-p'
+          , '--project'
+          , help='JIRA project to add an issue'
+          )
+        create_parser.add_argument(
             '-f'
           , '--attachment'
           , nargs='+'
           , type=argparse.FileType('rb')
-          , help='attach a given file to a new issue'
+          , help='attach a given file(s) to a new issue'
           )
-        parser.add_argument(
+        create_parser.add_argument(
+            '-w'
+          , '--show-issue-uri'
+          , action='store_true'
+          , help='on exit print URI of the issue created'
+          )
+        create_parser.add_argument(
             'input'
           , nargs='?'
           , type=argparse.FileType('r')
           , default=sys.stdin
           , help='input file with issue description (STDIN if omitted)'
           )
+        create_parser.set_defaults(func=self._create_new_issue)
+
+        update_parser = subparsers.add_parser(
+            'update'
+          , help="Update an issue."
+          )
+
+        update_parser.add_argument(
+            '-s'
+          , '--summary'
+          , required=True
+          , help='set new summary text for an issue'
+          )
+        update_parser.add_argument(
+            '-p'
+          , '--priority'
+          , required=True
+          , help='update priority for an issue'
+          )
+        update_parser.add_argument(
+            '-r'
+          , '--resolution'
+          , required=True
+          , help='update resolution for an issue'
+          )
+        update_parser.add_argument(
+            '-t'
+          , '--status'
+          , required=True
+          , help='update status for an issue'
+          )
+        update_parser.add_argument(
+            '-f'
+          , '--attachment'
+          , nargs='+'
+          , type=argparse.FileType('rb')
+          , help='attach a given file(s) to an issue'
+          )
+        update_parser.add_argument(
+            'input'
+          , nargs='?'
+          , type=argparse.FileType('r')
+          , default=None
+          , help='optional input file with issue description'
+          )
+        update_parser.set_defaults(func=self._update_issue)
 
         args = parser.parse_args()
 
@@ -135,16 +186,18 @@ class Application(object):
         # Check if `--server` is provided
         if args.server is not None:
             # Override used server section
-            target_section = args.server
-            self.config['default']['server'] = args.server
+            target_section = self._normalize_uri(args.server)
+            self.config['default']['server'] = target_section
         elif 'server'  in self.config['default']:
-            target_section = self.config['default']['server']
+            target_section = self._normalize_uri(self.config['default']['server'])
+            self.config['default']['server'] = target_section
         else:
             raise RuntimeError('JIRA server URI is not provided')
 
         if target_section not in self.config:
             self.config[target_section] = dict()
 
+        # Checking generic options:
         # Check if `--username` is provided
         if args.username is not None:
             self.config[target_section]['username'] = args.username
@@ -155,9 +208,59 @@ class Application(object):
         if args.password is not None:
             self.config[target_section]['password'] = args.password
 
+        # Check if `--verbose` is provided
+        if args.verbose is not None and args.verbose:
+            self.config['default']['verbose'] = 'true'
+
+        # Check command specific options
+        if args.cmd == 'create':
+            self._check_create_options(target_section, args)
+        elif args.cmd == 'update':
+            self._check_update_options(target_section, args)
+        else:
+            raise RuntimeError('Unsupported command: {}'.format(args.cmd))
+
+        # Setting self.verbose to be a 'shortcut' for corresponding configuration option
+        self.verbose = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
+        # TODO Validate options
+
+        self.config['default']['cmd'] = args.func
+
+        # Args seem Ok, ready to run
+        print('DEBUG args={}'.format(args))
+        print('DEBUG config={}'.format(self.config))
+        exit(1)
+
+
+    def _parse_config_file(self, config_file):
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read([config_file])
+        return config
+
+
+    def _normalize_uri(self, uri):
+        components = urllib.parse.urlparse(uri)
+        if not len(components.path):
+            return  urllib.parse.urljoin(components.geturl(), '/')
+        return uri
+
+
+    def _check_create_or_update_options(self, target_section, args):
+        # Check if `--attachment` is provided
+        self.config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
+
+        # Read description data if anything has specified
+        if args.input is not None:
+            self.config[target_section]['description'] = args.input.read().strip()
+
+
+    def _check_create_options(self, target_section, args):
         # Check if `--project` is provided
         if args.project is not None:
             self.config[target_section]['project'] = args.project
+
+        if 'project' not in self.config[target_section]:
+            raise RuntimeError('Project name is not provided')
 
         # Check if `--summary` is provided
         if args.summary is not None:
@@ -165,35 +268,22 @@ class Application(object):
         else:
             raise RuntimeError('Issue summary is not provided')
 
-        # Check if `--attachment` is provided
-        self.config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
-
         # Check if `--show-issue-url` is provided
         if args.show_issue_uri is not None:
             self.config['default']['show-issue-uri'] = True
         else:
             self.config['default']['show-issue-uri'] = False
 
-        # Check if `--verbose` is provided
-        if args.verbose is not None and args.verbose:
-            self.config['default']['verbose'] = 'true'
-
-        # Read description data
-        self.config[target_section]['description'] = args.input.read().strip()
-
-        # Setting self.verbose to be a 'shortcut' for corresponding configuration option
-        self.verbose = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
-        # TODO Validate options
-
-        # Args seem Ok, ready to run
-        #print(repr(self.config))
-        #sys.exit(1)
+        self._check_create_or_update_options(target_section, args)
 
 
-    def _parse_config_file(self, config_file):
-        config = configparser.ConfigParser(allow_no_value=True)
-        config.read([config_file])
-        return config
+    def _check_update_options(self, target_section, args):
+        # Copy options from CLI to selected config section
+        self.config[target_section]['summary'] = args.summary
+        self.config[target_section]['priority'] = args.priority
+        self.config[target_section]['resolution'] = args.resolution
+        self.config[target_section]['status'] = args.status
+        self._check_create_or_update_options(target_section, args)
 
 
     def _try_get_bool(self, text):
@@ -206,36 +296,38 @@ class Application(object):
         raise RuntimeError('Invalid boolean value: "{}"'.format(text))
 
 
-    def run(self):
-        server = self.config['default']['server']
+    def _make_jira_connection(self, server, config):
         # Make some SPAM
         if self.verbose:
             print(
                 '[DEBUG] Connecting to {} using {} {}'.format(
                     server
-                  , 'login "{}"'.format(self.config[server]['username']) if 'username' in self.config[server] else 'anonymous login'
-                  , 'and password provided' if self.config[server]['password'] is not None else 'w/o password'
+                  , 'login "{}"'.format(config['username']) if 'username' in config else 'anonymous login'
+                  , 'and password provided' if config['password'] is not None else 'w/o password'
                   )
                 , file=sys.stderr
               )
-        if 'username' in self.config[server]:
-            auth=(self.config[server]['username'], self.config[server]['password'])
+        if 'username' in config:
+            auth=(config['username'], config['password'])
 
         # Connecting...
-        conn = jira.JIRA(options={'server': server}, basic_auth=auth)
+        return jira.JIRA(options={'server': server}, basic_auth=auth)
+
+
+    def _create_new_issue(self, conn, config):
         # Make sure the project specified is really exists
-        prj = conn.project(self.config[server]['project'])
+        prj = conn.project(config['project'])
         if prj is None:
-            raise RuntimeError('Specified project "" not found'.format(self.config[server]['project']))
+            raise RuntimeError('Specified project "{}" not found'.format(config['project']))
 
         if self.verbose:
-            print('[DEBUG] Got project id for {}: {}'.format(self.config[server]['project'], prj.id), file=sys.stderr)
+            print('[DEBUG] Got project id for {}: {}'.format(config['project'], prj.id), file=sys.stderr)
 
         # Prepare data for a new issue
         issue_dict = {
             'project': {'id': prj.id}
-          , 'summary': self.config[server]['summary']
-          , 'description': self.config[server]['description']
+          , 'summary': config['summary']
+          , 'description': config['description']
           , 'issuetype': {'name': 'Bug'}
           }
         if self.verbose:
@@ -251,15 +343,30 @@ class Application(object):
             print('[DEBUG] Issue {} created'.format(issue.key), file=sys.stderr)
 
         # Attach files if any
-        if self.config[server]['attachments'] is not None:
-            for a in self.config[server]['attachments']:
+        if config['attachments'] is not None:
+            for a in config['attachments']:
                 if self.verbose:
                     print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key), file=sys.stderr)
                 conn.add_attachment(issue, attachment=a)
 
         # Print URL to browse created task if needed
         if self.config['default']['show-issue-uri']:
-            print('{}/browse/{}'.format(server, issue.key))
+            print('{}/browse/{}'.format(self.config['default']['server'], issue.key))
+
+
+    def _update_issue(self, conn):
+        pass
+
+
+    def run(self):
+        server = self.config['default']['server']
+        config = self.config[server]
+
+        # Connecting...
+        conn = self._make_jira_connection(server, config)
+
+        # Execute requested command
+        self.config['default']['cmd'](conn, config)
 
         # Set exit code to SUCCESS
         return os.EX_OK
