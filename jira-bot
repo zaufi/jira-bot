@@ -22,7 +22,7 @@ import jira
 import os
 import sys
 import urllib
-
+import jira_bot
 
 class Application(object):
     '''
@@ -108,111 +108,8 @@ class Application(object):
           )
 
         subparsers = parser.add_subparsers(help='Available sub-commands:', dest='cmd')
-
-        create_parser = subparsers.add_parser(
-            'create'
-          , help="Create a new issue."
-          )
-
-        create_parser.add_argument(
-            '-p'
-          , '--project'
-          , nargs='?'
-          , help='JIRA project to add an issue'
-          )
-        create_parser.add_argument(
-            '-t'
-          , '--issue-type'
-          , nargs='?'
-          , required=True
-          , help='type of issue to create'
-          )
-        create_parser.add_argument(
-            '-s'
-          , '--summary'
-          , required=True
-          , nargs='?'
-          , help='summary text for an issue'
-          )
-        create_parser.add_argument(
-            '-f'
-          , '--attachment'
-          , nargs='+'
-          , type=argparse.FileType('rb')
-          , help='attach a given file(s) to a new issue'
-          )
-        create_parser.add_argument(
-            '-w'
-          , '--show-issue-uri'
-          , action='store_true'
-          , help='on exit print URI of the issue created'
-          )
-        create_parser.add_argument(
-            'input'
-          , nargs='?'
-          , type=argparse.FileType('r')
-          , default=sys.stdin
-          , help='input file with issue description (STDIN if omitted)'
-          )
-        create_parser.set_defaults(func=self._create_new_issue)
-
-        update_parser = subparsers.add_parser(
-            'update'
-          , help="Update an issue."
-          )
-
-        update_parser.add_argument(
-            '-i'
-          , '--issue'
-          , nargs='?'
-          , required=True
-          , help='issue ID to update'
-          )
-        update_parser.add_argument(
-            '-s'
-          , '--summary'
-          , nargs='?'
-          , help='set new summary text for an issue'
-          )
-        update_parser.add_argument(
-            '-p'
-          , '--priority'
-          , nargs='?'
-          , help='update priority for an issue'
-          )
-        update_parser.add_argument(
-            '-r'
-          , '--resolution'
-          , nargs='?'
-          , help='update resolution for an issue'
-          )
-        update_parser.add_argument(
-            '-t'
-          , '--issue-type'
-          , nargs='?'
-          , help='change issue type'
-          )
-        update_parser.add_argument(
-            '-u'
-          , '--status'
-          , nargs='?'
-          , help='update status for an issue'
-          )
-        update_parser.add_argument(
-            '-f'
-          , '--attachment'
-          , nargs='+'
-          , type=argparse.FileType('rb')
-          , help='attach a given file(s) to an issue'
-          )
-        update_parser.add_argument(
-            'input'
-          , nargs='?'
-          , type=argparse.FileType('r')
-          , default=None
-          , help='optional input file with issue description'
-          )
-        update_parser.set_defaults(func=self._update_issue)
+        self.create = jira_bot.CreateSubCommand(subparsers)
+        self.update = jira_bot.UpdateSubCommand(subparsers)
 
         args = parser.parse_args()
 
@@ -250,22 +147,26 @@ class Application(object):
 
         # Check command specific options
         if args.cmd == 'create':
-            self._check_create_options(target_section, args)
+            self.create.check_options(self.config, target_section, args)
         elif args.cmd == 'update':
-            self._check_update_options(target_section, args)
+            self.update.check_options(self.config, target_section, args)
         else:
             raise RuntimeError('Unsupported command: {}'.format(args.cmd))
 
-        # Setting self.verbose to be a 'shortcut' for corresponding configuration option
-        self.verbose = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
-        # TODO Validate options
+        # Setting `verbose` flag to be a 'shortcut' for corresponding configuration option
+        self.config[target_section]['verbose'] = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
+
+        # Remember selected `server` as a key in current configurtation section
+        self.config[target_section]['server'] = target_section
+
+        # TODO Validate option values?
 
         self.config['default']['cmd'] = args.func
 
         # Args seem Ok, ready to run
         #print('DEBUG args={}'.format(args))
         #print('DEBUG config={}'.format(self.config))
-        #exit(1)
+        #sys.exit(1)
 
 
     def _parse_config_file(self, config_file):
@@ -281,45 +182,6 @@ class Application(object):
         return uri
 
 
-    def _check_create_or_update_options(self, target_section, args):
-        # Check if `--attachment` is provided
-        self.config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
-        self.config[target_section]['issuetype'] = args.issue_type
-
-        # Read description data if anything has specified
-        if args.input is not None:
-            self.config[target_section]['description'] = args.input.read().strip()
-
-
-    def _check_create_options(self, target_section, args):
-        # Check if `--project` is provided
-        if args.project is not None:
-            self.config[target_section]['project'] = args.project
-
-        if 'project' not in self.config[target_section]:
-            raise RuntimeError('Project name is not provided')
-
-        self.config[target_section]['summary'] = args.summary
-
-        # Check if `--show-issue-url` is provided
-        if args.show_issue_uri is not None:
-            self.config['default']['show-issue-uri'] = True
-        else:
-            self.config['default']['show-issue-uri'] = False
-
-        self._check_create_or_update_options(target_section, args)
-
-
-    def _check_update_options(self, target_section, args):
-        # Copy options from CLI to selected config section
-        self.config[target_section]['issue'] = args.issue
-        self.config[target_section]['summary'] = args.summary
-        self.config[target_section]['priority'] = args.priority
-        self.config[target_section]['resolution'] = args.resolution
-        self.config[target_section]['status'] = args.status
-        self._check_create_or_update_options(target_section, args)
-
-
     def _try_get_bool(self, text):
         text = text.strip()
         if text == 'yes' or text == 'true' or text == '1':
@@ -330,12 +192,12 @@ class Application(object):
         raise RuntimeError('Invalid boolean value: "{}"'.format(text))
 
 
-    def _make_jira_connection(self, server, config):
+    def _make_jira_connection(self, config):
         # Make some SPAM
-        if self.verbose:
+        if config['verbose']:
             print(
                 '[DEBUG] Connecting to {} using {} {}'.format(
-                    server
+                    config['server']
                   , 'login "{}"'.format(config['username']) if 'username' in config else 'anonymous login'
                   , 'and password provided' if config['password'] is not None else 'w/o password'
                   )
@@ -345,102 +207,7 @@ class Application(object):
             auth=(config['username'], config['password'])
 
         # Connecting...
-        return jira.JIRA(options={'server': server}, basic_auth=auth)
-
-
-    def _create_new_issue(self, conn, config):
-        # Make sure the project specified is really exists
-        prj = conn.project(config['project'])
-        if prj is None:
-            raise RuntimeError('Specified project "{}" not found'.format(config['project']))
-
-        if self.verbose:
-            print('[DEBUG] Got project id for {}: {}'.format(config['project'], prj.id), file=sys.stderr)
-
-        # Prepare data for a new issue
-        issue_dict = {
-            'project': {'id': prj.id}
-          , 'summary': config['summary']
-          , 'description': config['description']
-          }
-        try:
-            type_id = int(config['issuetype'])
-            issue_dict['issuetype'] = {'id' : config['issuetype']}
-        except:
-            # TODO Make sure given name in a list of issue types
-            issue_dict['issuetype'] = {'name' : config['issuetype']}
-
-        if self.verbose:
-            print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)), file=sys.stderr)
-
-        # Create it!
-        issue = conn.create_issue(fields=issue_dict)
-        if issue is None:
-            # TODO More diagnostic!
-            raise RuntimeError('Fail to add an issue')
-
-        if self.verbose:
-            print('[DEBUG] Issue {} created'.format(issue.key), file=sys.stderr)
-
-        # Attach files if any
-        if config['attachments'] is not None:
-            for a in config['attachments']:
-                if self.verbose:
-                    print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key), file=sys.stderr)
-                conn.add_attachment(issue, attachment=a)
-
-        # Print URL to browse created task if needed
-        if self.config['default']['show-issue-uri']:
-            print('{}/browse/{}'.format(self.config['default']['server'], issue.key))
-
-
-    def _update_issue(self, conn, config):
-        issue = conn.issue(config['issue'])
-        if issue is None:
-            # TODO More diagnostic!
-            raise RuntimeError('Fail to obtain the requested issue {}'.format(config['issue']))
-
-        # Prepare data for a new issue
-        issue_dict = {}
-        if 'summary' in config and config['summary'] is not None:
-            issue_dict['summary'] = config['summary']
-
-        if 'priority' in config and config['priority'] is not None:
-            try:
-                priority_id = int(config['priority'])
-                issue_dict['priority'] = {'id' : config['priority']}
-            except:
-                # TODO Make sure given name in a list of priorities
-                issue_dict['priority'] = {'name' : config['priority']}
-
-        if 'resolution' in config and config['resolution'] is not None:
-            try:
-                resolution_id = int(config['resolution'])
-                issue_dict['resolution'] = {'id' : config['resolution']}
-            except:
-                # TODO Make sure given name in a list of resolutions
-                issue_dict['resolution'] = {'name' : config['resolution']}
-
-        if 'status' in config and config['status'] is not None:
-            try:
-                status_id = int(config['status'])
-                issue_dict['status'] = {'id' : config['status']}
-            except:
-                # TODO Make sure given name in a list of statuses
-                issue_dict['status'] = {'name' : config['status']}
-
-        if 'issuetype' in config and config['issuetype'] is not None:
-            try:
-                type_id = int(config['issuetype'])
-                issue_dict['issuetype'] = {'id' : config['issuetype']}
-            except:
-                # TODO Make sure given name in a list of issue types
-                issue_dict['issuetype'] = {'name' : config['issuetype']}
-
-        if self.verbose:
-            print('[DEBUG] Issue {} going to be updated w/ data: {}'.format(issue.key, issue_dict), file=sys.stderr)
-
-        issue.update(fields=issue_dict)
+        return jira.JIRA(options={'server': config['server']}, basic_auth=auth)
 
 
     def run(self):
@@ -448,7 +215,7 @@ class Application(object):
         config = self.config[server]
 
         # Connecting...
-        conn = self._make_jira_connection(server, config)
+        conn = self._make_jira_connection(config)
 
         # Execute requested command
         self.config['default']['cmd'](conn, config)
