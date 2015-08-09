@@ -122,10 +122,10 @@ class Application(object):
           )
         create_parser.add_argument(
             '-t'
-          , '--type'
+          , '--issue-type'
           , nargs='?'
           , required=True
-          , help='issue type'
+          , help='type of issue to create'
           )
         create_parser.add_argument(
             '-s'
@@ -188,6 +188,12 @@ class Application(object):
           )
         update_parser.add_argument(
             '-t'
+          , '--issue-type'
+          , nargs='?'
+          , help='change issue type'
+          )
+        update_parser.add_argument(
+            '-u'
           , '--status'
           , nargs='?'
           , help='update status for an issue'
@@ -278,6 +284,7 @@ class Application(object):
     def _check_create_or_update_options(self, target_section, args):
         # Check if `--attachment` is provided
         self.config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
+        self.config[target_section]['issuetype'] = args.issue_type
 
         # Read description data if anything has specified
         if args.input is not None:
@@ -357,11 +364,11 @@ class Application(object):
           , 'description': config['description']
           }
         try:
-            priority_id = int(config['type'])
-            issue_dict['issuetype'] = {'id' : config['type']}
+            type_id = int(config['issuetype'])
+            issue_dict['issuetype'] = {'id' : config['issuetype']}
         except:
             # TODO Make sure given name in a list of issue types
-            issue_dict['issuetype'] = {'name' : config['type']}
+            issue_dict['issuetype'] = {'name' : config['issuetype']}
 
         if self.verbose:
             print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)), file=sys.stderr)
@@ -421,6 +428,14 @@ class Application(object):
             except:
                 # TODO Make sure given name in a list of statuses
                 issue_dict['status'] = {'name' : config['status']}
+
+        if 'issuetype' in config and config['issuetype'] is not None:
+            try:
+                type_id = int(config['issuetype'])
+                issue_dict['issuetype'] = {'id' : config['issuetype']}
+            except:
+                # TODO Make sure given name in a list of issue types
+                issue_dict['issuetype'] = {'name' : config['issuetype']}
 
         if self.verbose:
             print('[DEBUG] Issue {} going to be updated w/ data: {}'.format(issue.key, issue_dict), file=sys.stderr)
