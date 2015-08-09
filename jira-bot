@@ -118,6 +118,8 @@ class Application(object):
         self.list_resolutions = jira_bot.ListResolutionsSubCommand(subparsers)
         self.list_statuses = jira_bot.ListStatusesSubCommand(subparsers)
         self.list_projects = jira_bot.ListProjectsSubCommand(subparsers)
+        self.list_types = jira_bot.ListIssueTypesSubCommand(subparsers)
+        self.list_priorities = jira_bot.ListPrioritiesSubCommand(subparsers)
 
         args = parser.parse_args()
 
@@ -158,7 +160,7 @@ class Application(object):
             self.create.check_options(self.config, target_section, args)
         elif args.cmd == 'update':
             self.update.check_options(self.config, target_section, args)
-        elif args.cmd in ['list-resolutions', 'list-statuses', 'list-projects']:
+        elif args.cmd in ['list-resolutions', 'list-statuses', 'list-projects', 'list-issue-types', 'list-priorities']:
             pass
         else:
             raise RuntimeError('Unsupported command: {}'.format(args.cmd))

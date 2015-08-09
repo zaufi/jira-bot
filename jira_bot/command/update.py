@@ -44,25 +44,25 @@ class UpdateSubCommand:
             '-p'
           , '--priority'
           , nargs='?'
-          , help='update priority for an issue'
+          , help='update priority for an issue (use `list-priorities` subcommand to get valid values)'
           )
         update_parser.add_argument(
             '-r'
           , '--resolution'
           , nargs='?'
-          , help='update resolution for an issue'
+          , help='update resolution for an issue (use `list-resolutions` subcommand to get valid values)'
           )
         update_parser.add_argument(
             '-t'
           , '--issue-type'
           , nargs='?'
-          , help='change issue type'
+          , help='change issue type (use `list-issue-types` subcommand to get valid values)'
           )
         update_parser.add_argument(
             '-u'
           , '--status'
           , nargs='?'
-          , help='update status for an issue'
+          , help='update status for an issue (use `list-statuses` subcommand to get valid values)'
           )
         update_parser.add_argument(
             '-f'

@@ -37,7 +37,7 @@ class CreateSubCommand:
           , '--issue-type'
           , nargs='?'
           , required=True
-          , help='type of issue to create'
+          , help='type of issue to create (use `list-issue-types` subcommand to get valid values)'
           )
         create_parser.add_argument(
             '-s'
