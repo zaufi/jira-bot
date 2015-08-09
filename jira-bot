@@ -25,6 +25,20 @@ import urllib
 
 
 class Application(object):
+    '''
+        Application class to to the job.
+
+        Each command implemented as a method of this class.
+        Constructor analyze arguments passed via CLI and merge them w/
+        parameters came from configuration file.
+
+        During execution there is a dict member `self.config` containing
+        everything that needed to execute a requested command.
+
+        Config file consists from `[default]` section and possible few
+        sections desribing connection parameters to server(s), so you don't
+        need them to pass via CLI.
+    '''
     def __init__(self):
         # Try to parse config file option first
         config_parser = argparse.ArgumentParser(
@@ -101,15 +115,24 @@ class Application(object):
           )
 
         create_parser.add_argument(
+            '-p'
+          , '--project'
+          , nargs='?'
+          , help='JIRA project to add an issue'
+          )
+        create_parser.add_argument(
+            '-t'
+          , '--type'
+          , nargs='?'
+          , required=True
+          , help='issue type'
+          )
+        create_parser.add_argument(
             '-s'
           , '--summary'
           , required=True
+          , nargs='?'
           , help='summary text for an issue'
-          )
-        create_parser.add_argument(
-            '-p'
-          , '--project'
-          , help='JIRA project to add an issue'
           )
         create_parser.add_argument(
             '-f'
@@ -139,27 +162,34 @@ class Application(object):
           )
 
         update_parser.add_argument(
+            '-i'
+          , '--issue'
+          , nargs='?'
+          , required=True
+          , help='issue ID to update'
+          )
+        update_parser.add_argument(
             '-s'
           , '--summary'
-          , required=True
+          , nargs='?'
           , help='set new summary text for an issue'
           )
         update_parser.add_argument(
             '-p'
           , '--priority'
-          , required=True
+          , nargs='?'
           , help='update priority for an issue'
           )
         update_parser.add_argument(
             '-r'
           , '--resolution'
-          , required=True
+          , nargs='?'
           , help='update resolution for an issue'
           )
         update_parser.add_argument(
             '-t'
           , '--status'
-          , required=True
+          , nargs='?'
           , help='update status for an issue'
           )
         update_parser.add_argument(
@@ -227,9 +257,9 @@ class Application(object):
         self.config['default']['cmd'] = args.func
 
         # Args seem Ok, ready to run
-        print('DEBUG args={}'.format(args))
-        print('DEBUG config={}'.format(self.config))
-        exit(1)
+        #print('DEBUG args={}'.format(args))
+        #print('DEBUG config={}'.format(self.config))
+        #exit(1)
 
 
     def _parse_config_file(self, config_file):
@@ -262,11 +292,7 @@ class Application(object):
         if 'project' not in self.config[target_section]:
             raise RuntimeError('Project name is not provided')
 
-        # Check if `--summary` is provided
-        if args.summary is not None:
-            self.config[target_section]['summary'] = args.summary
-        else:
-            raise RuntimeError('Issue summary is not provided')
+        self.config[target_section]['summary'] = args.summary
 
         # Check if `--show-issue-url` is provided
         if args.show_issue_uri is not None:
@@ -279,6 +305,7 @@ class Application(object):
 
     def _check_update_options(self, target_section, args):
         # Copy options from CLI to selected config section
+        self.config[target_section]['issue'] = args.issue
         self.config[target_section]['summary'] = args.summary
         self.config[target_section]['priority'] = args.priority
         self.config[target_section]['resolution'] = args.resolution
@@ -328,8 +355,14 @@ class Application(object):
             'project': {'id': prj.id}
           , 'summary': config['summary']
           , 'description': config['description']
-          , 'issuetype': {'name': 'Bug'}
           }
+        try:
+            priority_id = int(config['type'])
+            issue_dict['issuetype'] = {'id' : config['type']}
+        except:
+            # TODO Make sure given name in a list of issue types
+            issue_dict['issuetype'] = {'name' : config['type']}
+
         if self.verbose:
             print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)), file=sys.stderr)
 
@@ -354,8 +387,45 @@ class Application(object):
             print('{}/browse/{}'.format(self.config['default']['server'], issue.key))
 
 
-    def _update_issue(self, conn):
-        pass
+    def _update_issue(self, conn, config):
+        issue = conn.issue(config['issue'])
+        if issue is None:
+            # TODO More diagnostic!
+            raise RuntimeError('Fail to obtain the requested issue {}'.format(config['issue']))
+
+        # Prepare data for a new issue
+        issue_dict = {}
+        if 'summary' in config and config['summary'] is not None:
+            issue_dict['summary'] = config['summary']
+
+        if 'priority' in config and config['priority'] is not None:
+            try:
+                priority_id = int(config['priority'])
+                issue_dict['priority'] = {'id' : config['priority']}
+            except:
+                # TODO Make sure given name in a list of priorities
+                issue_dict['priority'] = {'name' : config['priority']}
+
+        if 'resolution' in config and config['resolution'] is not None:
+            try:
+                resolution_id = int(config['resolution'])
+                issue_dict['resolution'] = {'id' : config['resolution']}
+            except:
+                # TODO Make sure given name in a list of resolutions
+                issue_dict['resolution'] = {'name' : config['resolution']}
+
+        if 'status' in config and config['status'] is not None:
+            try:
+                status_id = int(config['status'])
+                issue_dict['status'] = {'id' : config['status']}
+            except:
+                # TODO Make sure given name in a list of statuses
+                issue_dict['status'] = {'name' : config['status']}
+
+        if self.verbose:
+            print('[DEBUG] Issue {} going to be updated w/ data: {}'.format(issue.key, issue_dict), file=sys.stderr)
+
+        issue.update(fields=issue_dict)
 
 
     def run(self):
