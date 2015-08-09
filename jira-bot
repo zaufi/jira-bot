@@ -81,7 +81,7 @@ class Application(object):
             # Inherit options from config_parser
             parents=[config_parser]
             # print script description with -h/--help
-          , description=__doc__
+          , description='Manage JIRA bugs via CLI'
             # Don't mess with format of description
           , formatter_class=argparse.RawDescriptionHelpFormatter
           )
@@ -107,9 +107,17 @@ class Application(object):
           , help='JIRA account password'
           )
 
-        subparsers = parser.add_subparsers(help='Available sub-commands:', dest='cmd')
+        subparsers = parser.add_subparsers(
+            title='sub-commands'
+          , description='The following command may appear after generic options.\nTo get help use `--help` after command name.'
+          , dest='cmd'
+          , help='Action'
+          )
         self.create = jira_bot.CreateSubCommand(subparsers)
         self.update = jira_bot.UpdateSubCommand(subparsers)
+        self.list_resolutions = jira_bot.ListResolutionsSubCommand(subparsers)
+        self.list_statuses = jira_bot.ListStatusesSubCommand(subparsers)
+        self.list_projects = jira_bot.ListProjectsSubCommand(subparsers)
 
         args = parser.parse_args()
 
@@ -150,6 +158,8 @@ class Application(object):
             self.create.check_options(self.config, target_section, args)
         elif args.cmd == 'update':
             self.update.check_options(self.config, target_section, args)
+        elif args.cmd in ['list-resolutions', 'list-statuses', 'list-projects']:
+            pass
         else:
             raise RuntimeError('Unsupported command: {}'.format(args.cmd))
 

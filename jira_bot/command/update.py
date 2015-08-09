@@ -24,7 +24,7 @@ class UpdateSubCommand:
     def __init__(self, subparsers):
         update_parser = subparsers.add_parser(
             'update'
-          , help="Update an issue."
+          , help='Update an issue'
           )
 
         update_parser.add_argument(

@@ -23,7 +23,7 @@ class CreateSubCommand:
     def __init__(self, subparsers):
         create_parser = subparsers.add_parser(
             'create'
-          , help="Create a new issue."
+          , help='Create a new issue'
           )
 
         create_parser.add_argument(
