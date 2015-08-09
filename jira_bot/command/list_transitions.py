@@ -21,16 +21,29 @@ import sys
 
 from jira_bot.fancy_grid import FancyGrid
 
-class ListResolutionsSubCommand:
+class ListTransitionsSubCommand:
     def __init__(self, subparsers):
         parser = subparsers.add_parser(
-            'list-resolutions'
-          , help='Show list of configured resolutions'
+            'list-transitions'
+          , help='Show list of possible issue transitions according configured workflow'
           )
 
-        parser.set_defaults(func=self._list_resolutions)
+        parser.add_argument(
+            '-i'
+          , '--issue'
+          , nargs='?'
+          , required=True
+          , help='issue ID to get transitions for'
+          )
+
+        parser.set_defaults(func=self._list_transitions)
 
 
-    def _list_resolutions(self, conn, config):
-        resolutions = [(r.id, r.name) for r in conn.resolutions()]
-        print(FancyGrid(resolutions))
+    def check_options(self, config, target_section, args):
+        # Copy options from CLI to selected config section
+        config[target_section]['issue'] = args.issue
+
+
+    def _list_transitions(self, conn, config):
+        transitions = [(t['id'], t['name']) for t in conn.transitions(config['issue'])]
+        print(FancyGrid(transitions))

@@ -120,6 +120,7 @@ class Application(object):
         self.list_projects = jira_bot.ListProjectsSubCommand(subparsers)
         self.list_types = jira_bot.ListIssueTypesSubCommand(subparsers)
         self.list_priorities = jira_bot.ListPrioritiesSubCommand(subparsers)
+        self.list_transitions = jira_bot.ListTransitionsSubCommand(subparsers)
 
         args = parser.parse_args()
 
@@ -160,6 +161,8 @@ class Application(object):
             self.create.check_options(self.config, target_section, args)
         elif args.cmd == 'update':
             self.update.check_options(self.config, target_section, args)
+        elif args.cmd == 'list-transitions':
+            self.list_transitions.check_options(self.config, target_section, args)
         elif args.cmd in ['list-resolutions', 'list-statuses', 'list-projects', 'list-issue-types', 'list-priorities']:
             pass
         else:

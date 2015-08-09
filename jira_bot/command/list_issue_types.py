@@ -23,12 +23,12 @@ from jira_bot.fancy_grid import FancyGrid
 
 class ListIssueTypesSubCommand:
     def __init__(self, subparsers):
-        create_parser = subparsers.add_parser(
+        parser = subparsers.add_parser(
             'list-issue-types'
           , help='Show list of configured issue types'
           )
 
-        create_parser.set_defaults(func=self._list_issue_types)
+        parser.set_defaults(func=self._list_issue_types)
 
 
     def _list_issue_types(self, conn, config):

@@ -23,12 +23,12 @@ from jira_bot.fancy_grid import FancyGrid
 
 class ListPrioritiesSubCommand:
     def __init__(self, subparsers):
-        create_parser = subparsers.add_parser(
+        parser = subparsers.add_parser(
             'list-priorities'
           , help='Show list of configured priorities'
           )
 
-        create_parser.set_defaults(func=self._list_priorities)
+        parser.set_defaults(func=self._list_priorities)
 
 
     def _list_priorities(self, conn, config):

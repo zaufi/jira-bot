@@ -23,12 +23,12 @@ from jira_bot.fancy_grid import FancyGrid
 
 class ListStatusesSubCommand:
     def __init__(self, subparsers):
-        create_parser = subparsers.add_parser(
+        parser = subparsers.add_parser(
             'list-statuses'
           , help='Show list of configured statues'
           )
 
-        create_parser.set_defaults(func=self._list_statuses)
+        parser.set_defaults(func=self._list_statuses)
 
 
     def _list_statuses(self, conn, config):

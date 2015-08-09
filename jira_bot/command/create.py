@@ -21,52 +21,52 @@ import sys
 
 class CreateSubCommand:
     def __init__(self, subparsers):
-        create_parser = subparsers.add_parser(
+        parser = subparsers.add_parser(
             'create'
           , help='Create a new issue'
           )
 
-        create_parser.add_argument(
+        parser.add_argument(
             '-p'
           , '--project'
           , nargs='?'
           , help='JIRA project to add an issue'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-t'
           , '--issue-type'
           , nargs='?'
           , required=True
           , help='type of issue to create (use `list-issue-types` subcommand to get valid values)'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-s'
           , '--summary'
           , required=True
           , nargs='?'
           , help='summary text for an issue'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-f'
           , '--attachment'
           , nargs='+'
           , type=argparse.FileType('rb')
           , help='attach a given file(s) to a new issue'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-w'
           , '--show-issue-uri'
           , action='store_true'
           , help='on exit print URI of the issue created'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             'input'
           , nargs='?'
           , type=argparse.FileType('r')
           , default=sys.stdin
           , help='input file with issue description (STDIN if omitted)'
           )
-        create_parser.set_defaults(func=self._create_new_issue)
+        parser.set_defaults(func=self._create_new_issue)
 
 
     def check_options(self, config, target_section, args):

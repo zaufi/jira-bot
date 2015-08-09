@@ -22,63 +22,63 @@ import sys
 
 class UpdateSubCommand:
     def __init__(self, subparsers):
-        update_parser = subparsers.add_parser(
+        parser = subparsers.add_parser(
             'update'
           , help='Update an issue'
           )
 
-        update_parser.add_argument(
+        parser.add_argument(
             '-i'
           , '--issue'
           , nargs='?'
           , required=True
           , help='issue ID to update'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             '-s'
           , '--summary'
           , nargs='?'
           , help='set new summary text for an issue'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             '-p'
           , '--priority'
           , nargs='?'
           , help='update priority for an issue (use `list-priorities` subcommand to get valid values)'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             '-r'
           , '--resolution'
           , nargs='?'
           , help='update resolution for an issue (use `list-resolutions` subcommand to get valid values)'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             '-t'
           , '--issue-type'
           , nargs='?'
           , help='change issue type (use `list-issue-types` subcommand to get valid values)'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             '-u'
           , '--status'
           , nargs='?'
           , help='update status for an issue (use `list-statuses` subcommand to get valid values)'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             '-f'
           , '--attachment'
           , nargs='+'
           , type=argparse.FileType('rb')
           , help='attach a given file(s) to an issue'
           )
-        update_parser.add_argument(
+        parser.add_argument(
             'input'
           , nargs='?'
           , type=argparse.FileType('r')
           , default=None
           , help='optional input file with issue description'
           )
-        update_parser.set_defaults(func=self._update_issue)
+        parser.set_defaults(func=self._update_issue)
 
 
     def check_options(self, config, target_section, args):

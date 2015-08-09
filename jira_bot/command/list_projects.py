@@ -23,12 +23,12 @@ from jira_bot.fancy_grid import FancyGrid
 
 class ListProjectsSubCommand:
     def __init__(self, subparsers):
-        create_parser = subparsers.add_parser(
+        parser = subparsers.add_parser(
             'list-projects'
           , help='Show list of configured projects'
           )
 
-        create_parser.set_defaults(func=self._list_projects)
+        parser.set_defaults(func=self._list_projects)
 
 
     def _list_projects(self, conn, config):
