@@ -1,6 +1,6 @@
 # What is this
 
-This (simple) script aimed to create a JIRA issue. It designed to be
+This (simple) script aimed to manage JIRA issues. It designed to be
 used from scripts and accept all details via CLI.
 
 To reduce typing one may use configuration file(s) to specify reusable
@@ -20,6 +20,9 @@ angle brackets to your data:
     password=<pass>
     project=<DEFAULT-PROJECT-NAME>
 
+    [http://<another-JIRA-server>]
+    …
+
 Note, that system-wide and per user config files are **additive** -- that means
 you can specify _default server_ in system-wide config, and particular credentials
 at `.jira-botrc` **at same section**.
@@ -28,10 +31,13 @@ Default server (i.e. when `--server` CLI option is omitted) would be taken from
 `default` section of config file. **Per user configuration will take precedence
 over the system-wide, but CLI options always win**.
 
-Examples:
+Usage examples:
 
-    # Using pipe
-    $ echo 'Bug description...' | jira-bot -v -m 'Bug summary' -f attach.file.1 attach.file.2
+    # Create a new issue using pipe
+    $ echo 'Bug description...' | jira-bot -v create -s 'Bug summary' -t Bug -f attach.file.1 attach.file.2
 
-    # Using file w/ description
-    $ jira-bot -v -m 'Bug summary' -f attach.file.1 attach.file.2 -- description.txt
+    # Create a new issue using file w/ description
+    $ jira-bot create -s 'Proposal summary' -t 'New Feature' -f attach.file.1 attach.file.2 -- description.txt
+
+    # Change summary and priority of existed issue
+    $ jira-bot update -i EXISTED-123 -s 'New summary' -p Trivial
