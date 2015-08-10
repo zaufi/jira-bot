@@ -27,18 +27,19 @@ def readfile(filename):
     with open(filename, encoding='UTF-8') as f:
         return f.read()
 
-version = "1.4"
+version = "2.0"
 
 setup(
     name             = 'jira-bot'
   , version          = version
   , description      = 'JIRA Issue Creation Bot'
   , long_description = readfile('README.md')
-  , maintainer       = 'Alex Turbov'
-  , maintainer_email = 'I.zaufi@gmail.com'
-  , url              = 'http://zaufi.github.io/pluggable-output-processor.html'
+  , author           = 'Alex Turbov'
+  , author_email     = 'I.zaufi@gmail.com'
+  , url              = 'http://zaufi.github.io/jira-bot.html'
   , download_url     = 'https://github.com/zaufi/jira-bot/archive/version-{}.tar.gz'.format(version)
   , scripts          = ['jira-bot']
+  , packages         = ['jira_bot', 'jira_bot.command']
   , data_files       = [
         ('/etc/jira-bot', ['config/jira-bot.conf.sample'])
       ]
@@ -53,5 +54,6 @@ setup(
       , 'Programming Language :: Python :: 3'
       , 'Topic :: Utilities'
       ]
+  , keywords = 'jira CLI scripting'
   , install_requires = ['argparse', 'setuptools', 'jira']
   )
