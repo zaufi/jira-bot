@@ -248,6 +248,9 @@ if __name__ == "__main__":
         sys.exit(a.run())
     except KeyboardInterrupt:
         sys.exit(1)
+    except jira.utils.JIRAError as ex:
+        print('Error: {}'.format(ex.text), file=sys.stderr)
+        sys.exit(1)
     except RuntimeError as ex:
         print('Error: {}'.format(ex), file=sys.stderr)
         sys.exit(1)

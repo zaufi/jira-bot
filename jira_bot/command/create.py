@@ -19,6 +19,9 @@
 import argparse
 import sys
 
+from jira_bot.utils import *
+
+
 class CreateSubCommand:
     def __init__(self, subparsers):
         parser = subparsers.add_parser(
@@ -105,13 +108,8 @@ class CreateSubCommand:
             'project': {'id': prj.id}
           , 'summary': config['summary']
           , 'description': config['description']
+          , 'issuetype': form_value_using_dict(config, 'issuetype', lambda: conn.issue_types())
           }
-        try:
-            type_id = int(config['issuetype'])
-            issue_dict['issuetype'] = {'id' : config['issuetype']}
-        except:
-            # TODO Make sure given name in a list of issue types
-            issue_dict['issuetype'] = {'name' : config['issuetype']}
 
         if config['verbose']:
             print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)), file=sys.stderr)

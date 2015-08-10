@@ -19,6 +19,8 @@
 import argparse
 import sys
 
+from jira_bot.utils import *
+
 
 class UpdateSubCommand:
     def __init__(self, subparsers):
@@ -47,16 +49,22 @@ class UpdateSubCommand:
           , help='update priority for an issue (use `list-priorities` subcommand to get valid values)'
           )
         parser.add_argument(
-            '-r'
-          , '--resolution'
-          , nargs='?'
-          , help='update resolution for an issue (use `list-resolutions` subcommand to get valid values)'
-          )
-        parser.add_argument(
             '-t'
           , '--issue-type'
           , nargs='?'
           , help='change issue type (use `list-issue-types` subcommand to get valid values)'
+          )
+        parser.add_argument(
+            '-z'
+          , '--transition'
+          , nargs='?'
+          , help='change issue state to given transition (use `list-transitions` subcommand to get valid values)'
+          )
+        parser.add_argument(
+            '-r'
+          , '--resolution'
+          , nargs='?'
+          , help='update resolution for an issue (use `list-resolutions` subcommand to get valid values)'
           )
         parser.add_argument(
             '-u'
@@ -84,12 +92,21 @@ class UpdateSubCommand:
     def check_options(self, config, target_section, args):
         # Copy options from CLI to selected config section
         config[target_section]['issue'] = args.issue
-        config[target_section]['summary'] = args.summary
-        config[target_section]['priority'] = args.priority
-        config[target_section]['resolution'] = args.resolution
-        config[target_section]['status'] = args.status
         config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
-        config[target_section]['issuetype'] = args.issue_type
+
+        # Check optional options ;-)
+        if args.summary is not None:
+            config[target_section]['summary'] = args.summary
+        if args.priority is not None:
+            config[target_section]['priority'] = args.priority
+        if args.resolution is not None:
+            config[target_section]['resolution'] = args.resolution
+        if args.status is not None:
+            config[target_section]['status'] = args.status
+        if args.transition is not None:
+            config[target_section]['transition'] = args.transition
+        if args.issue_type is not None:
+            config[target_section]['issuetype'] = args.issue_type
 
         # Read description data if anything has specified
         if args.input is not None:
@@ -104,24 +121,14 @@ class UpdateSubCommand:
 
         # Prepare data to update issue
         issue_dict = {}
-        if 'summary' in config and config['summary'] is not None:
+        if 'summary' in config:
             issue_dict['summary'] = config['summary']
 
-        if 'priority' in config and config['priority'] is not None:
-            try:
-                priority_id = int(config['priority'])
-                issue_dict['priority'] = {'id' : config['priority']}
-            except:
-                # TODO Make sure given name in a list of priorities
-                issue_dict['priority'] = {'name' : config['priority']}
+        if 'priority' in config:
+            issue_dict['priority'] = form_value_using_dict(config, 'priority', lambda: conn.priorities())
 
-        if 'issuetype' in config and config['issuetype'] is not None:
-            try:
-                type_id = int(config['issuetype'])
-                issue_dict['issuetype'] = {'id' : config['issuetype']}
-            except:
-                # TODO Make sure given name in a list of issue types
-                issue_dict['issuetype'] = {'name' : config['issuetype']}
+        if 'issuetype' in config:
+            issue_dict['issuetype'] = form_value_using_dict(config, 'issuetype', lambda: conn.issue_types())
 
         if len(issue_dict):
             if config['verbose']:
@@ -129,26 +136,37 @@ class UpdateSubCommand:
 
             issue.update(fields=issue_dict)
 
+        # Attach files if any
+        if config['attachments'] is not None:
+            for a in config['attachments']:
+                if config['verbose']:
+                    print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key), file=sys.stderr)
+                conn.add_attachment(issue, attachment=a)
+
         # Prepare data to make a traksition if needed
-        issue_dict = {}
-        if 'resolution' in config and config['resolution'] is not None:
-            try:
-                resolution_id = int(config['resolution'])
-                issue_dict['resolution'] = {'id' : config['resolution']}
-            except:
-                # TODO Make sure given name in a list of resolutions
-                issue_dict['resolution'] = {'name' : config['resolution']}
+        if 'transition' in config and config['transition'] is not None:
+            issue_dict = {}
 
-        if 'status' in config and config['status'] is not None:
-            try:
-                status_id = int(config['status'])
-                issue_dict['status'] = {'id' : config['status']}
-            except:
-                # TODO Make sure given name in a list of statuses
-                issue_dict['status'] = {'name' : config['status']}
+            if 'resolution' in config and config['resolution'] is not None:
+                issue_dict['resolution'] = form_value_using_dict(config, 'resolution', lambda: conn.resolutions())
 
-        if len(issue_dict):
+            if 'status' in config and config['status'] is not None:
+                issue_dict['status'] = form_value_using_dict(config, 'status', lambda: conn.statuses())
+
+            # Get list of allowed transitions
+            transition_ids = []
+            transition_names = []
+            for t in conn.transitions(issue):
+                transition_ids.append(t['id'])
+                transition_names.append(t['name'])
+
+            if not (config['transition'].isdigit() and config['transition'] in transition_ids or config['transition'] in transition_names):
+                raise RuntimeError('Given transition not in a list of allowed values: {}'.format(', '.join(transition_names)))
+
             if config['verbose']:
                 print('[DEBUG] Going to do issue {} transition w/ data: {}'.format(issue.key, issue_dict), file=sys.stderr)
 
-            conn.transition_issue(issue, fields=issue_dict)
+            if len(issue_dict):
+                conn.transition_issue(issue, config['transition'], fields=issue_dict)
+            else:
+                conn.transition_issue(issue, config['transition'])
