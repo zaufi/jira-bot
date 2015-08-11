@@ -39,6 +39,15 @@ class Application(object):
         sections desribing connection parameters to server(s), so you don't
         need them to pass via CLI.
     '''
+
+    COMMANDS_WITHOUT_OPTIONS = [
+        'list-resolutions'
+      , 'list-statuses'
+      , 'list-projects'
+      , 'list-issue-types'
+      , 'list-priorities'
+      ]
+
     def __init__(self):
         # Try to parse config file option first
         config_parser = argparse.ArgumentParser(
@@ -115,6 +124,7 @@ class Application(object):
           )
         self.create = jira_bot.CreateSubCommand(subparsers)
         self.update = jira_bot.UpdateSubCommand(subparsers)
+        self.comment = jira_bot.CommentSubCommand(subparsers)
         self.list_resolutions = jira_bot.ListResolutionsSubCommand(subparsers)
         self.list_statuses = jira_bot.ListStatusesSubCommand(subparsers)
         self.list_projects = jira_bot.ListProjectsSubCommand(subparsers)
@@ -161,12 +171,14 @@ class Application(object):
             self.create.check_options(self.config, target_section, args)
         elif args.cmd == 'update':
             self.update.check_options(self.config, target_section, args)
+        elif args.cmd == 'comment':
+            self.comment.check_options(self.config, target_section, args)
         elif args.cmd == 'list-transitions':
             self.list_transitions.check_options(self.config, target_section, args)
-        elif args.cmd in ['list-resolutions', 'list-statuses', 'list-projects', 'list-issue-types', 'list-priorities']:
+        elif args.cmd in self.COMMANDS_WITHOUT_OPTIONS:
             pass
         else:
-            raise RuntimeError('Unsupported command: {}'.format(args.cmd))
+            raise RuntimeError('Unsupported command: {} [code review required]'.format(args.cmd))
 
         # Setting `verbose` flag to be a 'shortcut' for corresponding configuration option
         self.config[target_section]['verbose'] = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
@@ -179,6 +191,7 @@ class Application(object):
         self.config['default']['cmd'] = args.func
 
         # Args seem Ok, ready to run
+        # TODO Print this on `-vvv`
         #print('DEBUG args={}'.format(args))
         #print('DEBUG config={}'.format(self.config))
         #sys.exit(1)

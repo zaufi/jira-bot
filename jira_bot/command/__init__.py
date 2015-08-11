@@ -16,11 +16,12 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from .comment import CommentSubCommand
 from .create import CreateSubCommand
-from .update import UpdateSubCommand
-from .list_resolutions import ListResolutionsSubCommand
-from .list_statuses import ListStatusesSubCommand
-from .list_projects import ListProjectsSubCommand
 from .list_issue_types import ListIssueTypesSubCommand
 from .list_priorities import ListPrioritiesSubCommand
+from .list_projects import ListProjectsSubCommand
+from .list_resolutions import ListResolutionsSubCommand
+from .list_statuses import ListStatusesSubCommand
 from .list_transitions import ListTransitionsSubCommand
+from .update import UpdateSubCommand
