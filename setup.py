@@ -32,7 +32,7 @@ version = "2.0"
 setup(
     name             = 'jira-bot'
   , version          = version
-  , description      = 'JIRA Issue Creation Bot'
+  , description      = 'JIRA Bot'
   , long_description = readfile('README.md')
   , author           = 'Alex Turbov'
   , author_email     = 'I.zaufi@gmail.com'
