@@ -1,4 +1,5 @@
-# What is this
+What is this
+============
 
 This (simple) script aimed to manage JIRA issues. It designed to be
 used from scripts and accept all details via CLI.
@@ -41,3 +42,9 @@ Usage examples:
 
     # Change summary and priority of existed issue
     $ jira-bot update -i EXISTED-123 -s 'New summary' -p Trivial
+
+    # Add comment visible to developers
+    $ jira-bot comment -i ISSUE-456 add -v Developers < comment-content.txt
+
+    # Brief list of comments
+    $ jira-bot comment -i ISSUE-456 ls
