@@ -59,11 +59,17 @@ class CommentSubCommand:
           , help='Add a new comment'
           )
         add_parser.add_argument(
-            'comment-file'
+            '-v'
+          , '--visibility'
+          , nargs='?'
+          , help='group/role the comment would be visible to'
+          )
+        add_parser.add_argument(
+            'input'
           , nargs='?'
           , type=argparse.FileType('r')
-          , default=None
-          , help='input file with comment text'
+          , default=sys.stdin
+          , help='input file with comment text (STDIN if omitted)'
           )
         add_parser.set_defaults(subcommand=self._add_comment)
 
@@ -102,6 +108,13 @@ class CommentSubCommand:
 
         if args.subcmd == 'ls':
             config[target_section]['details'] = args.details
+        elif args.subcmd == 'add':
+            # Read comment text
+            config[target_section]['comment'] = args.input.read().strip()
+
+            if args.visibility is not None:
+                # TODO Validate visibility group/role
+                config[target_section]['visibility'] = {'type': 'role', 'value': args.visibility}
 
 
     def _manage_comments(self, conn, config):
@@ -116,7 +129,12 @@ class CommentSubCommand:
 
     def _add_comment(self, issue, conn, config):
         if config['verbose']:
-            print('[DEBUG] Sorry, not implemented...', file=sys.stderr)
+            print('[DEBUG] Going to add a comment to issue {}: {}'.format(issue.key, config['comment']), file=sys.stderr)
+
+        if 'visibility' in config:
+            conn.add_comment(issue, config['comment'], visibility=config['visibility'])
+        else:
+            conn.add_comment(issue, config['comment'])
 
 
     def _list_comments(self, issue, conn, config):
