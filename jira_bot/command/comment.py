@@ -33,7 +33,6 @@ class CommentSubCommand:
         parser.add_argument(
             '-i'
           , '--issue'
-          , nargs='?'
           , required=True
           , help='issue ID to update'
           )
@@ -61,7 +60,8 @@ class CommentSubCommand:
         add_parser.add_argument(
             '-v'
           , '--visibility'
-          , help='group/role the comment would be visible to'
+          , metavar='Role'
+          , help='name of the role/group the comment would be visible to'
           )
         add_parser.add_argument(
             'input'

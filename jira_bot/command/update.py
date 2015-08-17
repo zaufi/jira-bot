@@ -38,36 +38,44 @@ class UpdateSubCommand:
         parser.add_argument(
             '-s'
           , '--summary'
+          , metavar='text'
           , help='set new summary text for an issue'
           )
         parser.add_argument(
             '-p'
           , '--priority'
+          , metavar='Name/#ID'
           , help='update priority for an issue (use `list-priorities` subcommand to get valid values)'
           )
         parser.add_argument(
             '-t'
           , '--issue-type'
-          , help='change issue type (use `list-issue-types` subcommand to get valid values)'
+          , metavar='Type/#ID'
+          , help='symbolic name/type or numeric ID of issue to update (use `list-issue-types` ' \
+                'subcommand to get valid values)'
           )
         parser.add_argument(
             '-z'
           , '--transition'
+          , metavar='Name/#ID'
           , help='change issue state to given transition (use `list-transitions` subcommand to get valid values)'
           )
         parser.add_argument(
             '-r'
           , '--resolution'
+          , metavar='Name/#ID'
           , help='update resolution for an issue (use `list-resolutions` subcommand to get valid values)'
           )
         parser.add_argument(
             '-u'
           , '--status'
+          , metavar='Name/#ID'
           , help='update status for an issue (use `list-statuses` subcommand to get valid values)'
           )
         parser.add_argument(
             '-f'
           , '--attachment'
+          , metavar='file'
           , nargs='+'
           , type=argparse.FileType('rb')
           , help='attach a given file(s) to an issue'

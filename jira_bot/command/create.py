@@ -38,11 +38,15 @@ class CreateSubCommand:
             '-t'
           , '--issue-type'
           , required=True
-          , help='type of issue to create (use `list-issue-types` subcommand to get valid values)'
+          , default='Bug'
+          , metavar='Type/#ID'
+          , help='symbolic name/type or numeric ID of issue to create (use `list-issue-types` ' \
+                'subcommand to get valid values), default `%(default)s`.'
           )
         parser.add_argument(
             '-s'
           , '--summary'
+          , metavar='text'
           , required=True
           , help='summary text for an issue'
           )
@@ -50,6 +54,7 @@ class CreateSubCommand:
             '-f'
           , '--attachment'
           , nargs='+'
+          , metavar='file'
           , type=argparse.FileType('rb')
           , help='attach a given file(s) to a new issue'
           )
