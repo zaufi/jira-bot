@@ -61,7 +61,6 @@ class CommentSubCommand:
         add_parser.add_argument(
             '-v'
           , '--visibility'
-          , nargs='?'
           , help='group/role the comment would be visible to'
           )
         add_parser.add_argument(

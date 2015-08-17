@@ -32,13 +32,11 @@ class CreateSubCommand:
         parser.add_argument(
             '-p'
           , '--project'
-          , nargs='?'
           , help='JIRA project to add an issue'
           )
         parser.add_argument(
             '-t'
           , '--issue-type'
-          , nargs='?'
           , required=True
           , help='type of issue to create (use `list-issue-types` subcommand to get valid values)'
           )
@@ -46,7 +44,6 @@ class CreateSubCommand:
             '-s'
           , '--summary'
           , required=True
-          , nargs='?'
           , help='summary text for an issue'
           )
         parser.add_argument(

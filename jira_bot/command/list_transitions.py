@@ -31,7 +31,6 @@ class ListTransitionsSubCommand:
         parser.add_argument(
             '-i'
           , '--issue'
-          , nargs='?'
           , required=True
           , help='issue ID to get transitions for'
           )

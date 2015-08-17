@@ -32,44 +32,37 @@ class UpdateSubCommand:
         parser.add_argument(
             '-i'
           , '--issue'
-          , nargs='?'
           , required=True
           , help='issue ID to update'
           )
         parser.add_argument(
             '-s'
           , '--summary'
-          , nargs='?'
           , help='set new summary text for an issue'
           )
         parser.add_argument(
             '-p'
           , '--priority'
-          , nargs='?'
           , help='update priority for an issue (use `list-priorities` subcommand to get valid values)'
           )
         parser.add_argument(
             '-t'
           , '--issue-type'
-          , nargs='?'
           , help='change issue type (use `list-issue-types` subcommand to get valid values)'
           )
         parser.add_argument(
             '-z'
           , '--transition'
-          , nargs='?'
           , help='change issue state to given transition (use `list-transitions` subcommand to get valid values)'
           )
         parser.add_argument(
             '-r'
           , '--resolution'
-          , nargs='?'
           , help='update resolution for an issue (use `list-resolutions` subcommand to get valid values)'
           )
         parser.add_argument(
             '-u'
           , '--status'
-          , nargs='?'
           , help='update status for an issue (use `list-statuses` subcommand to get valid values)'
           )
         parser.add_argument(
