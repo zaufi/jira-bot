@@ -78,6 +78,7 @@ class Application(object):
 
         # Merge configuration data normalizing URIs in section names
         self.config = dict()
+        self.config['default'] = dict()
         for cfg in configs:
             for section in cfg.sections():
                 normalized_section = self._normalize_uri(section)
@@ -235,7 +236,7 @@ class Application(object):
             auth=(config['username'], config['password'])
 
         # Connecting...
-        return jira.JIRA(options={'server': config['server']}, basic_auth=auth)
+        return jira.JIRA(options={'server': config['server'], 'check_update': False }, basic_auth=auth)
 
 
     def run(self):
