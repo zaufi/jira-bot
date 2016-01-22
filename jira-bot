@@ -228,15 +228,16 @@ class Application(object):
                 '[DEBUG] Connecting to {} using {} {}'.format(
                     config['server']
                   , 'login "{}"'.format(config['username']) if 'username' in config else 'anonymous login'
-                  , 'and password provided' if config['password'] is not None else 'w/o password'
+                  , 'and password provided' if 'password' in config and config['password'] is not None else 'w/o password'
                   )
                 , file=sys.stderr
               )
         if 'username' in config:
             auth=(config['username'], config['password'])
+            return jira.JIRA(options={'server': config['server'], 'check_update': False }, basic_auth=auth)
 
-        # Connecting...
-        return jira.JIRA(options={'server': config['server'], 'check_update': False }, basic_auth=auth)
+        # Else use anonymous login
+        return jira.JIRA(options={'server': config['server'], 'check_update': False })
 
 
     def run(self):

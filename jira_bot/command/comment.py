@@ -153,7 +153,10 @@ class CommentSubCommand:
               , c.author.displayName
               , self._make_headline(c.body, 60)
               ) for c in comments]
-            print(FancyGrid(table))
+            if len(table):
+                print(FancyGrid(table))
+            else:
+                print('No comments for issue {}'.format(issue))
 
 
     def _remove_comments(self, issue, conn, config):
