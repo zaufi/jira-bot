@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015 Alex Turbov <i.zaufi@gmail.com>
+# Copyright (c) 2015-2017 Alex Turbov <i.zaufi@gmail.com>
 #
 # JIRA Bot is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -16,15 +15,19 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Project specific imports
+from ..command import abstract_command
+from ..fancy_grid import FancyGrid
+from ..utils import *
+
+# Standard imports
 import argparse
 import datetime
 import sys
 
-from jira_bot.utils import *
-from jira_bot.fancy_grid import FancyGrid
 
+class comment(abstract_command):
 
-class CommentSubCommand:
     def __init__(self, subparsers):
         parser = subparsers.add_parser(
             'comment'
@@ -43,7 +46,7 @@ class CommentSubCommand:
           , action='store_true'
           , help='transform date/time to local time zone, otherwise leave as is'
           )
-        parser.set_defaults(func=self._manage_comments)
+        parser.set_defaults(instance=self)
 
         comment_sub_command_parser = parser.add_subparsers(
             title='sub-commands'
@@ -103,6 +106,7 @@ class CommentSubCommand:
         # Copy options from CLI to selected config section
         config[target_section]['issue'] = args.issue
         config[target_section]['local'] = args.local_time
+        assert hasattr(args, 'subcommand') and args.subcommand is not None
         config[target_section]['subcmd'] = args.subcommand
 
         if args.subcmd == 'ls':
@@ -114,6 +118,12 @@ class CommentSubCommand:
             if args.visibility is not None:
                 # TODO Validate visibility group/role
                 config[target_section]['visibility'] = {'type': 'role', 'value': args.visibility}
+
+
+    def run(self, conn, config):
+        assert 'subcmd' in config
+
+        config['subcmd'](self, conn, config)
 
 
     def _manage_comments(self, conn, config):

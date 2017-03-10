@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015 Alex Turbov <i.zaufi@gmail.com>
+# Copyright (c) 2015-2017 Alex Turbov <i.zaufi@gmail.com>
 #
 # JIRA Bot is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -16,21 +16,28 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Project specific imports
+import jira_bot
+import jira_bot.commands
+
+# Standard imports
 import argparse
 import configparser
+import exitstatus
 import jira
+import importlib
 import os
 import sys
 import urllib
-import jira_bot
+
 
 class Application(object):
     '''
         Application class to to the job.
 
-        Each command implemented as a method of this class.
+        Each command implemented as a "plugin".
         Constructor analyze arguments passed via CLI and merge them w/
-        parameters came from configuration file.
+        parameters came from configuration file(s).
 
         During execution there is a dict member `self.config` containing
         everything that needed to execute a requested command.
@@ -120,20 +127,21 @@ class Application(object):
         subparsers = parser.add_subparsers(
             title='sub-commands'
           , description='The following command may appear after generic options.\nTo get help use `--help` after command name.'
-          , dest='cmd'
           , help='Action'
+          , metavar='<COMMAND>'
           )
-        self.create = jira_bot.CreateSubCommand(subparsers)
-        self.update = jira_bot.UpdateSubCommand(subparsers)
-        self.comment = jira_bot.CommentSubCommand(subparsers)
-        self.list_resolutions = jira_bot.ListResolutionsSubCommand(subparsers)
-        self.list_statuses = jira_bot.ListStatusesSubCommand(subparsers)
-        self.list_projects = jira_bot.ListProjectsSubCommand(subparsers)
-        self.list_types = jira_bot.ListIssueTypesSubCommand(subparsers)
-        self.list_priorities = jira_bot.ListPrioritiesSubCommand(subparsers)
-        self.list_transitions = jira_bot.ListTransitionsSubCommand(subparsers)
 
-        args = parser.parse_args()
+        # Loading modules provided by `jira_bot.commands` package
+        for name in jira_bot.commands.list_modules():
+            module = importlib.import_module('jira_bot.commands.' + name)
+            # Getting all commands in the current module
+            for command in jira_bot.commands.get_commands_implemented_by_module(module):
+                instance = command(subparsers)
+
+        try:
+            args = parser.parse_args()
+        except RuntimeError as e:
+            parser.error(str(e))
 
         # Merge CLI options w/ parsed configuration
         target_section = 'default'
@@ -150,7 +158,7 @@ class Application(object):
             raise RuntimeError('JIRA server URI is not provided')
 
         if target_section not in self.config:
-            self.config[target_section] = dict()
+            self.config[target_section] = {}
 
         # Checking generic options:
         # Check if `--username` is provided
@@ -168,18 +176,9 @@ class Application(object):
             self.config['default']['verbose'] = 'true'
 
         # Check command specific options
-        if args.cmd == 'create':
-            self.create.check_options(self.config, target_section, args)
-        elif args.cmd == 'update':
-            self.update.check_options(self.config, target_section, args)
-        elif args.cmd == 'comment':
-            self.comment.check_options(self.config, target_section, args)
-        elif args.cmd == 'list-transitions':
-            self.list_transitions.check_options(self.config, target_section, args)
-        elif args.cmd in self.COMMANDS_WITHOUT_OPTIONS:
-            pass
-        else:
-            raise RuntimeError('Unsupported command: {} [code review required]'.format(args.cmd))
+        assert hasattr(args, 'instance') and args.instance is not None, 'Some command do not provide an instance??? Code review required!!'
+
+        args.instance.check_options(self.config, target_section, args)
 
         # Setting `verbose` flag to be a 'shortcut' for corresponding configuration option
         self.config[target_section]['verbose'] = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
@@ -189,7 +188,7 @@ class Application(object):
 
         # TODO Validate option values?
 
-        self.config['default']['cmd'] = args.func
+        self.config['default']['cmd'] = args.instance
 
         # Args seem Ok, ready to run
         # TODO Print this on `-vvv`
@@ -248,24 +247,24 @@ class Application(object):
         conn = self._make_jira_connection(config)
 
         # Execute requested command
-        self.config['default']['cmd'](conn, config)
+        self.config['default']['cmd'].run(conn, config)
 
         # Set exit code to SUCCESS
-        return os.EX_OK
+        return exitstatus.ExitStatus.success
 
 
 #
 # Main entry point
 #
-if __name__ == "__main__":
+def main():
     try:
         a = Application()
-        sys.exit(a.run())
+        return a.run()
     except KeyboardInterrupt:
-        sys.exit(1)
-    except jira.utils.JIRAError as ex:
+        return exitstatus.ExitStatus.failure
+    except jira.JIRAError as ex:
         print('Error: {}'.format(ex.text), file=sys.stderr)
-        sys.exit(1)
     except RuntimeError as ex:
         print('Error: {}'.format(ex), file=sys.stderr)
-        sys.exit(1)
+
+    return exitstatus.ExitStatus.failure

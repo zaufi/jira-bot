@@ -15,19 +15,28 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Project specific imports
+from ..command import abstract_command
 
-def form_value_using_dict(config, value, get_values_collection):
-    ''' TODO Better name?
+# Standard imports
+import inspect
+import pkgutil
+
+
+def list_modules():
     '''
-    assert isinstance(config, dict) and 0 < len(config)
+        Helper function to gather a list of existed modules of this package
 
-    if config[value].isdigit():
-        return {'id' : config[value]}
+        TODO Check if this code could help:
 
-    else:
-        values = [v.name for v in get_values_collection()]
+            for sc in PluginBase.__subclasses__():
+                print(sc.__name__)
+    '''
+    return [name for importer, name, ispkg in pkgutil.iter_modules(__path__) if ispkg == False]
 
-        if config[value] in values:
-            return {'name' : config[value]}
 
-        raise RuntimeError('Given {} not in a list of allowed values: {}'.format(value, ', '.join(values)))
+def get_commands_implemented_by_module(module):
+    return [
+        obj for name, obj in inspect.getmembers(module) \
+        if inspect.isclass(obj) and issubclass(obj, abstract_command) and obj.__module__.startswith('jira_bot.commands.') \
+      ]

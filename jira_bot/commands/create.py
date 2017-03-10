@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015 Alex Turbov <i.zaufi@gmail.com>
+# Copyright (c) 2015-2017 Alex Turbov <i.zaufi@gmail.com>
 #
 # JIRA Bot is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -16,13 +15,18 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Project specific imports
+from ..command import abstract_command
+from ..fancy_grid import FancyGrid
+from ..utils import *
+
+# Standard imports
 import argparse
 import sys
 
-from jira_bot.utils import *
 
+class create(abstract_command):
 
-class CreateSubCommand:
     def __init__(self, subparsers):
         parser = subparsers.add_parser(
             'create'
@@ -71,7 +75,7 @@ class CreateSubCommand:
           , default=sys.stdin
           , help='input file with issue description (STDIN if omitted)'
           )
-        parser.set_defaults(func=self._create_new_issue)
+        parser.set_defaults(instance=self)
 
 
     def check_options(self, config, target_section, args):
@@ -96,7 +100,7 @@ class CreateSubCommand:
             config[target_section]['description'] = args.input.read().strip()
 
 
-    def _create_new_issue(self, conn, config):
+    def run(self, conn, config):
         # Make sure the project specified is really exists
         prj = conn.project(config['project'])
         if prj is None:

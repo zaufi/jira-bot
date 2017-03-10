@@ -2,7 +2,7 @@
 #
 # Install script for JIRA bot
 #
-# Copyright (c) 2015 Alex Turbov <i.zaufi@gmail.com>
+# Copyright (c) 2015-2017 Alex Turbov <i.zaufi@gmail.com>
 #
 # JIRA Bot is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -17,29 +17,43 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+# Project specific imports
+import jira_bot
+
+# Standard imports
+import pathlib
+from setuptools import setup, find_packages
+
+
+def sources_dir():
+    return pathlib.Path(__file__).parent
 
 
 def readfile(filename):
-    with open(filename, encoding='UTF-8') as f:
+    with (sources_dir() / filename).open(encoding='UTF-8') as f:
         return f.read()
 
-version = '2.0.2'
+
+def get_requirements_from(filename):
+    with (sources_dir() / filename).open(encoding='UTF-8') as f:
+        return f.readlines()
+
 
 setup(
     name             = 'jira-bot'
-  , version          = version
+  , version          = jira_bot.__version__
   , description      = 'JIRA Bot'
   , long_description = readfile('README.md')
   , author           = 'Alex Turbov'
   , author_email     = 'I.zaufi@gmail.com'
   , url              = 'http://zaufi.github.io/jira-bot.html'
-  , download_url     = 'https://github.com/zaufi/jira-bot/archive/version-{}.tar.gz'.format(version)
-  , scripts          = ['jira-bot']
-  , packages         = ['jira_bot', 'jira_bot.command']
+  , download_url     = 'https://github.com/zaufi/jira-bot/archive/version-{}.tar.gz'.format(jira_bot.__version__)
+  , entry_points       = {
+        'console_scripts': [
+            'jira-bot = jira_bot.cli:main'
+          ]
+      }
+  , packages         = find_packages(exclude=('test'))
   , data_files       = [
         ('/etc/jira-bot', ['config/jira-bot.conf.sample'])
       ]
@@ -55,5 +69,6 @@ setup(
       , 'Topic :: Utilities'
       ]
   , keywords = 'jira CLI scripting'
-  , install_requires = ['argparse', 'setuptools', 'jira']
+  , install_requires   = get_requirements_from('requirements.txt')
+  , zip_safe           = True
   )
