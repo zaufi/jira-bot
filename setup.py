@@ -70,5 +70,7 @@ setup(
       ]
   , keywords = 'jira CLI scripting'
   , install_requires   = get_requirements_from('requirements.txt')
+  , test_suite         = 'test'
+  , tests_require      = get_requirements_from('test-requirements.txt')
   , zip_safe           = True
   )

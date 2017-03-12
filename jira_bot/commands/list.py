@@ -23,7 +23,7 @@ from ..grid import fancy_grid
 import argparse
 
 
-class list_(abstract_command):
+class ls(abstract_command):
 
     def __init__(self, subparsers):
         parser = subparsers.add_parser(

@@ -124,11 +124,8 @@ class Application(object):
           )
 
         # Loading modules provided by `jira_bot.commands` package
-        for name in jira_bot.commands.list_modules():
-            module = importlib.import_module('jira_bot.commands.' + name)
-            # Getting all commands in the current module
-            for command in jira_bot.commands.get_commands_implemented_by_module(module):
-                instance = command(subparsers)
+        for command in supported_commands():
+            command(subparsers)
 
         try:
             args = parser.parse_args()

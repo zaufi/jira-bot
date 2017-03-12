@@ -16,10 +16,12 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Project specific imports
+import jira_bot.commands
 
 # Standard imports
 import errno
-import fcntl
+import importlib
+import pkgutil
 import os
 import subprocess
 import tempfile
@@ -83,3 +85,31 @@ def interactive_edit(content):
     os.unlink(filename)                                     # Clean temp file
 
     return data.decode('utf8')                              # Return updated content
+
+
+def list_modules(package):
+    '''
+        Helper function to gather a list of existed modules of given package.
+        Return list of strings, where every item is a module name.
+    '''
+    return [name for importer, name, ispkg in pkgutil.iter_modules(package.__path__) if ispkg == False]
+
+
+def get_commands_implemented_by_module(module):
+    '''
+        Return all subclasses of `abstract_command` declared in a given module
+    '''
+    return [
+        obj for name, obj in inspect.getmembers(module) \
+        if inspect.isclass(obj) and issubclass(obj, abstract_command) and obj.__module__.startswith(module.__package__) \
+      ]
+
+
+def supported_commands():
+    # Loading modules provided by `jira_bot.commands` package
+    for name in list_modules(jira_bot.commands):
+        module = importlib.import_module('.' + name, jira_bot.commands.__name__)
+
+        # Getting all commands in the current module
+        for command in jira_bot.commands.get_commands_implemented_by_module(module):
+            yield command
