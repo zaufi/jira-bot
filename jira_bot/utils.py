@@ -80,4 +80,6 @@ def interactive_edit(content):
     os.lseek(fd, 0, os.SEEK_SET)                            # Rewind to the begining
     data = os.read(fd, st.st_size)                          # Read shole file
 
+    os.unlink(filename)                                     # Clean temp file
+
     return data.decode('utf8')                              # Return updated content

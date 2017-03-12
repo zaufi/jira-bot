@@ -31,3 +31,38 @@ class abstract_command(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def run(self, conn, config):
         pass
+
+
+class abstract_complex_command(abstract_command, metaclass=abc.ABCMeta):
+
+    def __init__(self, name, help_string, subparsers):
+        parser = subparsers.add_parser(
+            name
+          , help=help_string
+          )
+        parser.set_defaults(instance=self)
+
+        subsubparsers = parser.add_subparsers(
+            title='available sub-commands'
+          , metavar='<command>'
+          )
+
+        self.register_subcommands(subsubparsers)
+
+
+    def check_options(self, config, target_section, args):
+        # Dispatch parameters checking to corresponding sub-function
+        if hasattr(args, 'checker'):
+            args.checker(config, target_section, args)
+
+        # Remember the sub-function to execute
+        config[target_section]['what'] = args.func
+
+
+    def run(self, conn, config):
+        config['what'](conn, config)
+
+
+    @abc.abstractmethod
+    def register_subcommands(self, subsubparsers):
+        pass

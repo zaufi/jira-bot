@@ -16,7 +16,7 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Project specific imports
-from ..command import abstract_command
+from ..command import abstract_complex_command
 from ..grid import fancy_grid
 from ..utils import async_read, form_value_using_dict, interactive_edit
 
@@ -26,28 +26,20 @@ import os
 import sys
 
 
-class issue(abstract_command):
+class issue(abstract_complex_command):
 
     def __init__(self, subparsers):
-        parser = subparsers.add_parser(
-            'issue'
-          , help='Display various lists'
-          )
-        parser.set_defaults(instance=self)
+        super().__init__('issue', 'Work with issues', subparsers)
 
-        subsubparsers = parser.add_subparsers(
-            title='available sub-commands'
-          , dest='subcommand'
-          , metavar='<command>'
-          )
 
+    def register_subcommands(self, subsubparsers):
         create_parser = subsubparsers.add_parser(
             'create'
           , help='create a new issue'
           , aliases=['cr']
           )
         create_parser.add_argument(
-            '-p'
+            '-P'
           , '--project'
           , help='JIRA project to add an issue'
           )
@@ -57,8 +49,15 @@ class issue(abstract_command):
           , required=True
           , default='Bug'
           , metavar='Type/#ID'
-          , help='symbolic name/type or numeric ID of issue to create (use `list-issue-types` ' \
-                'sub-command to get valid values), default `%(default)s`.'
+          , help='symbolic name/type or numeric ID of issue to create (use `list issue-types` ' \
+                'sub-command to get valid values), default `%(default)s`'
+          )
+        create_parser.add_argument(
+            '-p'
+          , '--priority'
+          , metavar='Name/#ID'
+          , default='Minor'
+          , help='priority for an issue -- use `list priorities` sub-command to get valid values, default `%(default)s`'
           )
         create_parser.add_argument(
             '-s'
@@ -104,19 +103,6 @@ class issue(abstract_command):
           , func=self._create
           )
 
-
-
-    def check_options(self, config, target_section, args):
-        # Dispatch parameters checking to corresponding sub-function
-        if hasattr(args, 'checker'):
-            args.checker(config, target_section, args)
-
-        # Remember the sub-function to execute
-        config[target_section]['what'] = args.func
-
-
-    def run(self, conn, config):
-        config['what'](conn, config)
 
 
     def _create_check_options(self, config, target_section, args):

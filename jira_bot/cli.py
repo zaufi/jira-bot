@@ -47,14 +47,6 @@ class Application(object):
         need them to pass via CLI.
     '''
 
-    COMMANDS_WITHOUT_OPTIONS = [
-        'list-resolutions'
-      , 'list-statuses'
-      , 'list-projects'
-      , 'list-issue-types'
-      , 'list-priorities'
-      ]
-
     def __init__(self):
         # Try to parse config file option first
         config_parser = argparse.ArgumentParser(
@@ -62,9 +54,9 @@ class Application(object):
           , add_help=False
           )
         config_parser.add_argument(
-            "-c"
-          , "--config-file"
-          , help="specify config file to use"
+            '-c'
+          , '--config-file'
+          , help='specify config file to use'
           , metavar="FILE"
           )
         args, remaining_argv = config_parser.parse_known_args()
@@ -217,7 +209,7 @@ class Application(object):
         if text == 'no' or text == 'false' or text == '0':
             return False
 
-        raise RuntimeError('Invalid boolean value: "{}"'.format(text))
+        raise RuntimeError('Invalid boolean value: `{}`'.format(text))
 
 
     def _make_jira_connection(self, config):
@@ -226,7 +218,7 @@ class Application(object):
             print(
                 '[DEBUG] Connecting to {} using {} {}'.format(
                     config['server']
-                  , 'login "{}"'.format(config['username']) if 'username' in config else 'anonymous login'
+                  , 'login `{}`'.format(config['username']) if 'username' in config else 'anonymous login'
                   , 'and password provided' if 'password' in config and config['password'] is not None else 'w/o password'
                   )
                 , file=sys.stderr
