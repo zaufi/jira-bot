@@ -17,7 +17,7 @@
 
 # Project specific imports
 from ..command import abstract_command
-from ..fancy_grid import FancyGrid
+from ..grid import fancy_grid
 from ..utils import *
 
 # Standard imports
@@ -164,7 +164,7 @@ class comment(abstract_command):
               , self._make_headline(c.body, 60)
               ) for c in comments]
             if len(table):
-                print(FancyGrid(table))
+                print(fancy_grid(table))
             else:
                 print('No comments for issue {}'.format(issue))
 

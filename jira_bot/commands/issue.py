@@ -17,7 +17,7 @@
 
 # Project specific imports
 from ..command import abstract_command
-from ..fancy_grid import FancyGrid
+from ..grid import fancy_grid
 from ..utils import async_read, form_value_using_dict, interactive_edit
 
 # Standard imports

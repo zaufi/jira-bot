@@ -17,7 +17,7 @@
 
 # Project specific imports
 from ..command import abstract_command
-from ..fancy_grid import FancyGrid
+from ..grid import fancy_grid
 
 # Standard imports
 import argparse
@@ -108,27 +108,27 @@ class list_(abstract_command):
 
     def _issue_types(self, conn, config):
         types = [(i.id, i.name) for i in conn.issue_types()]
-        print(FancyGrid(types))
+        print(fancy_grid(types))
 
 
     def _priorities(self, conn, config):
         priorities = [(p.id, p.name) for p in conn.priorities()]
-        print(FancyGrid(priorities))
+        print(fancy_grid(priorities))
 
 
     def _projects(self, conn, config):
         projects = [(p.id, p.key, p.name) for p in conn.projects()]
-        print(FancyGrid(projects))
+        print(fancy_grid(projects))
 
 
     def _resolutions(self, conn, config):
         resolutions = [(r.id, r.name) for r in conn.resolutions()]
-        print(FancyGrid(resolutions))
+        print(fancy_grid(resolutions))
 
 
     def _statuses(self, conn, config):
         statuses = [(r.id, r.name) for r in conn.statuses()]
-        print(FancyGrid(statuses))
+        print(fancy_grid(statuses))
 
 
     def _transitions_check_options(self, config, target_section, args):
@@ -138,4 +138,4 @@ class list_(abstract_command):
 
     def _transitions(self, conn, config):
         transitions = [(t['id'], t['name']) for t in conn.transitions(config['issue'])]
-        print(FancyGrid(transitions))
+        print(fancy_grid(transitions))

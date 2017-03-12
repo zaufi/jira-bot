@@ -2,10 +2,10 @@
 #
 
 
-class FancyGrid(object):
+class fancy_grid(object):
     # TODO: Move this code to some kind of unit test
     # t = [[55555.666, 'aaa', '20', 'aaaaaaaa', 66], [42.5, 'bbbbbbbbbbbbb', '44444', 'bb', 112], [42, 'cc', 3, 'ccc', 555555555555]]
-    # print(FancyGrid(t))
+    # print(fancy_grid(t))
 
     def __init__(self, table):
         ''' Pass any sequence of sequences here '''
