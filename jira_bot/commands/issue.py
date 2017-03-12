@@ -18,43 +18,56 @@
 # Project specific imports
 from ..command import abstract_command
 from ..fancy_grid import FancyGrid
-from ..utils import *
+from ..utils import async_read, form_value_using_dict, interactive_edit
 
 # Standard imports
 import argparse
+import os
 import sys
 
 
-class create(abstract_command):
+class issue(abstract_command):
 
     def __init__(self, subparsers):
         parser = subparsers.add_parser(
-            'create'
-          , help='Create a new issue'
+            'issue'
+          , help='Display various lists'
+          )
+        parser.set_defaults(instance=self)
+
+        subsubparsers = parser.add_subparsers(
+            title='available sub-commands'
+          , dest='subcommand'
+          , metavar='<command>'
           )
 
-        parser.add_argument(
+        create_parser = subsubparsers.add_parser(
+            'create'
+          , help='create a new issue'
+          , aliases=['cr']
+          )
+        create_parser.add_argument(
             '-p'
           , '--project'
           , help='JIRA project to add an issue'
           )
-        parser.add_argument(
+        create_parser.add_argument(
             '-t'
           , '--issue-type'
           , required=True
           , default='Bug'
           , metavar='Type/#ID'
           , help='symbolic name/type or numeric ID of issue to create (use `list-issue-types` ' \
-                'subcommand to get valid values), default `%(default)s`.'
+                'sub-command to get valid values), default `%(default)s`.'
           )
-        parser.add_argument(
+        create_parser.add_argument(
             '-s'
           , '--summary'
           , metavar='text'
           , required=True
           , help='summary text for an issue'
           )
-        parser.add_argument(
+        create_parser.add_argument(
             '-f'
           , '--attachment'
           , nargs='+'
@@ -62,45 +75,78 @@ class create(abstract_command):
           , type=argparse.FileType('rb')
           , help='attach a given file(s) to a new issue'
           )
-        parser.add_argument(
+
+        create_parser.add_argument(
+            '-e'
+          , '--editor'
+          , action='store_true'
+          , default=False
+          , help='use {} to edit description before send'.format(
+                os.environ['EDITOR'] if 'EDITOR' in os.environ else 'configured editor'
+              )
+          )
+        create_parser.add_argument(
             '-w'
           , '--show-issue-uri'
           , action='store_true'
+          , default=True
           , help='on exit print URI of the issue created'
           )
-        parser.add_argument(
+        create_parser.add_argument(
             'input'
           , nargs='?'
           , type=argparse.FileType('r')
           , default=sys.stdin
           , help='input file with issue description (STDIN if omitted)'
           )
-        parser.set_defaults(instance=self)
+        create_parser.set_defaults(
+            checker=self._create_check_options
+          , func=self._create
+          )
+
 
 
     def check_options(self, config, target_section, args):
+        # Dispatch parameters checking to corresponding sub-function
+        if hasattr(args, 'checker'):
+            args.checker(config, target_section, args)
+
+        # Remember the sub-function to execute
+        config[target_section]['what'] = args.func
+
+
+    def run(self, conn, config):
+        config['what'](conn, config)
+
+
+    def _create_check_options(self, config, target_section, args):
         # Check if `--project` is provided
         if args.project is not None:
             config[target_section]['project'] = args.project
 
         if 'project' not in config[target_section]:
-            raise RuntimeError('Project name is not provided')
+            raise RuntimeError('Project name is not provided and no default is set')
 
         config[target_section]['summary'] = args.summary
 
         # Check if `--show-issue-url` is provided
-        config[target_section]['show-issue-uri'] = (args.show_issue_uri is not None)
+        config[target_section]['show-issue-uri'] = args.show_issue_uri
 
         # Check if `--attachment` is provided
         config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
         config[target_section]['issuetype'] = args.issue_type
 
         # Read description data if anything has specified
-        if args.input is not None:
-            config[target_section]['description'] = args.input.read().strip()
+        assert args.input is not None
+        config[target_section]['description'] = async_read(args.input.fileno()).strip()
+
+        # Is interactive edit has requested
+        # NOTE Do interactive edit __before__ making a HTTP connection
+        if args.editor:
+            config[target_section]['description'] = interactive_edit(config[target_section]['description'])
 
 
-    def run(self, conn, config):
+    def _create(self, conn, config):
         # Make sure the project specified is really exists
         prj = conn.project(config['project'])
         if prj is None:
@@ -139,4 +185,3 @@ class create(abstract_command):
         # Print URL to browse created task if needed
         if config['show-issue-uri']:
             print('{}/browse/{}'.format(config['server'], issue.key))
-

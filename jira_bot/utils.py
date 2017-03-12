@@ -15,6 +15,15 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Project specific imports
+
+# Standard imports
+import errno
+import fcntl
+import os
+import subprocess
+import tempfile
+
 
 def form_value_using_dict(config, value, get_values_collection):
     ''' TODO Better name?
@@ -31,3 +40,44 @@ def form_value_using_dict(config, value, get_values_collection):
             return {'name' : config[value]}
 
         raise RuntimeError('Given {} not in a list of allowed values: {}'.format(value, ', '.join(values)))
+
+
+def async_read(fd):
+    os.set_blocking(fd, False)                              # Set non blocking mode for given file descriptor
+
+    content = bytes()                                       # Accumulate readed blocks here
+
+    # Try read until EOF or I/O block
+    while True:
+        try:
+            block = os.read(fd, 1024 * 1024)                # Try read 1M
+
+            if not block:                                   # Check for EOF
+                break                                       # Stop reading if so
+
+            content += block                                # Append collected data
+
+        except OSError as ex:
+            if ex.errno == errno.EWOULDBLOCK:               # If read failed because of I/O block
+                break                                       # Just stop reading then
+
+            raise RuntimeError('I/O error: {}'.format(ex))  # In case of some other serious error report it!
+
+    return content.decode('utf8')                           # Ok, return collected data
+
+
+def interactive_edit(content):
+    fd, filename = tempfile.mkstemp()                       # Make a temp file with current content
+    os.write(fd, content.encode('utf8'))                    # Write initial content (if any) to it
+
+    if 'EDITOR' not in os.environ:                          # Check if any editor has configured
+        raise RuntimeError('`EDITOR` environment variable is not set. Don\'t know how to edit description...')
+
+    rc = subprocess.run([os.environ['EDITOR'], filename])   # Start the editor and wait for end of editing
+
+    # Get updated description
+    st = os.fstat(fd)                                       # Get stats by file descriptor (iterested in updated size)
+    os.lseek(fd, 0, os.SEEK_SET)                            # Rewind to the begining
+    data = os.read(fd, st.st_size)                          # Read shole file
+
+    return data.decode('utf8')                              # Return updated content

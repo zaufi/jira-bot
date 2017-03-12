@@ -88,9 +88,9 @@ class list_(abstract_command):
           , aliases=['tr']
           )
         transitions_parser.set_defaults(
-                checker=self._transitions_check_options
-              , func=self._transitions
-              )
+            checker=self._transitions_check_options
+          , func=self._transitions
+          )
 
 
     def check_options(self, config, target_section, args):
