@@ -15,5 +15,8 @@
 # You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Project specific imports
+from .plugin_loader import supported_commands
+
 # Set PEP396 version attribute
 __version__ = '3.0.0'

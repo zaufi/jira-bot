@@ -18,7 +18,6 @@
 
 # Project specific imports
 import jira_bot
-import jira_bot.commands
 
 # Standard imports
 import argparse
@@ -124,7 +123,7 @@ class Application(object):
           )
 
         # Loading modules provided by `jira_bot.commands` package
-        for command in supported_commands():
+        for command in jira_bot.supported_commands():
             command(subparsers)
 
         try:

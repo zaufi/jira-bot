@@ -20,7 +20,7 @@
 # Project specific imports
 import jira_bot.commands
 from jira_bot.command import abstract_command
-from jira_bot.utils import list_modules, supported_commands
+from jira_bot.plugin_loader import list_modules, supported_commands
 
 # Standard imports
 import importlib
