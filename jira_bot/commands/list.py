@@ -46,40 +46,54 @@ class ls(abstract_command):
           , metavar='<what>'
           )
 
+        filters_parser = subsubparsers.add_parser(
+            'filters'
+          , help='list of favourite filters'
+          , aliases=['flt']
+          )
+        filters_parser.set_defaults(subcommand=self._filters)
+
+        groups_parser = subsubparsers.add_parser(
+            'groups'
+          , help='list of user groups'
+          , aliases=['gr', 'grp']
+          )
+        groups_parser.set_defaults(subcommand=self._groups)
+
         issue_types_parser = subsubparsers.add_parser(
             'issue-types'
           , help='list of configured issue types'
           , aliases=['it']
           )
-        issue_types_parser.set_defaults(func=self._issue_types)
+        issue_types_parser.set_defaults(subcommand=self._issue_types)
 
         priorities_parser = subsubparsers.add_parser(
             'priorities'
           , help='list of configured projects'
           , aliases=['priority', 'prio']
           )
-        priorities_parser.set_defaults(func=self._priorities)
+        priorities_parser.set_defaults(subcommand=self._priorities)
 
         projects_parser = subsubparsers.add_parser(
             'projects'
           , help='list of configured projects'
           , aliases=['proj']
           )
-        projects_parser.set_defaults(func=self._projects)
+        projects_parser.set_defaults(subcommand=self._projects)
 
         resolutions_parser = subsubparsers.add_parser(
             'resolutions'
           , help='list of configured resolutions'
           , aliases=['rs']
           )
-        resolutions_parser.set_defaults(func=self._resolutions)
+        resolutions_parser.set_defaults(subcommand=self._resolutions)
 
         statuses_parser = subsubparsers.add_parser(
             'statuses'
           , help='list of configured statuses'
           , aliases=['st']
           )
-        statuses_parser.set_defaults(func=self._statuses)
+        statuses_parser.set_defaults(subcommand=self._statuses)
 
         transitions_parser = subsubparsers.add_parser(
             'transitions'
@@ -89,7 +103,7 @@ class ls(abstract_command):
           )
         transitions_parser.set_defaults(
             checker=self._transitions_check_options
-          , func=self._transitions
+          , subcommand=self._transitions
           )
 
 
@@ -98,12 +112,25 @@ class ls(abstract_command):
         if hasattr(args, 'checker'):
             args.checker(config, target_section, args)
 
-        # Remember the subfunction to execute
-        config[target_section]['what'] = args.func
+        # Remember the sub-function to execute
+        if hasattr(args, 'subcommand'):
+            config[target_section]['what'] = args.subcommand
+        else:
+            raise RuntimeError('No sub-command has given')
 
 
     def run(self, conn, config):
         config['what'](conn, config)
+
+
+    def _filters(self, conn, config):
+        filters = [(i.id, i.name) for i in conn.favourite_filters()]
+        print(fancy_grid(filters))
+
+
+    def _groups(self, conn, config):
+        for i in conn.groups():
+            print(i)
 
 
     def _issue_types(self, conn, config):

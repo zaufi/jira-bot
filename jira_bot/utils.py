@@ -41,30 +41,6 @@ def form_value_using_dict(config, value, get_values_collection):
         raise RuntimeError('Given {} not in a list of allowed values: {}'.format(value, ', '.join(values)))
 
 
-def async_read(fd):
-    os.set_blocking(fd, False)                              # Set non blocking mode for given file descriptor
-
-    content = bytes()                                       # Accumulate readed blocks here
-
-    # Try read until EOF or I/O block
-    while True:
-        try:
-            block = os.read(fd, 1024 * 1024)                # Try read 1M
-
-            if not block:                                   # Check for EOF
-                break                                       # Stop reading if so
-
-            content += block                                # Append collected data
-
-        except OSError as ex:
-            if ex.errno == errno.EWOULDBLOCK:               # If read failed because of I/O block
-                break                                       # Just stop reading then
-
-            raise RuntimeError('I/O error: {}'.format(ex))  # In case of some other serious error report it!
-
-    return content.decode('utf8')                           # Ok, return collected data
-
-
 def interactive_edit(content):
     fd, filename = tempfile.mkstemp()                       # Make a temp file with current content
     os.write(fd, content.encode('utf8'))                    # Write initial content (if any) to it

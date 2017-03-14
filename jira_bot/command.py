@@ -16,9 +16,11 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Project specific imports
+from .plugin_loader import supported_subcommands
 
 # Standard imports
 import abc
+import sys
 
 
 class abstract_command(metaclass=abc.ABCMeta):
@@ -33,7 +35,29 @@ class abstract_command(metaclass=abc.ABCMeta):
         pass
 
 
-class abstract_complex_command(abstract_command, metaclass=abc.ABCMeta):
+class abstract_subcommand(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def register_subcommands(self, subsubparsers):
+        pass
+
+
+class registrator(abc.ABCMeta):
+
+     def __call__(cls, *args, **kwargs):
+        cmd = super().__call__(*args, **kwargs)             # Create a command class
+
+        # Iterate over sub-command implementation classes, defined in the same module
+        for subcmd_class in supported_subcommands(sys.modules[cls.__module__], abstract_subcommand):
+            subcmd = subcmd_class()                         # Create a sub-command instance
+            subcmd.register_subcommands(cmd.subsubparsers)  # Ask it to register its options to the command's parser
+
+        delattr(cmd, 'subsubparsers')                       # Now this attribute no longer needed
+
+        return cmd                                          # Return the command instance
+
+
+class abstract_complex_command(abstract_command, metaclass=registrator):
 
     def __init__(self, name, help_string, subparsers):
         parser = subparsers.add_parser(
@@ -42,12 +66,10 @@ class abstract_complex_command(abstract_command, metaclass=abc.ABCMeta):
           )
         parser.set_defaults(instance=self)
 
-        subsubparsers = parser.add_subparsers(
+        self.subsubparsers = parser.add_subparsers(
             title='available sub-commands'
           , metavar='<command>'
           )
-
-        self.register_subcommands(subsubparsers)
 
 
     def check_options(self, config, target_section, args):
@@ -56,13 +78,11 @@ class abstract_complex_command(abstract_command, metaclass=abc.ABCMeta):
             args.checker(config, target_section, args)
 
         # Remember the sub-function to execute
-        config[target_section]['what'] = args.func
+        if hasattr(args, 'subcommand'):
+            config[target_section]['what'] = args.subcommand
+        else:
+            raise RuntimeError('No sub-command has given')
 
 
     def run(self, conn, config):
         config['what'](conn, config)
-
-
-    @abc.abstractmethod
-    def register_subcommands(self, subsubparsers):
-        pass

@@ -16,34 +16,74 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Project specific imports
-from ..command import abstract_complex_command
+from ..command import abstract_complex_command, abstract_subcommand
 from ..grid import fancy_grid
+from ..logger import get_logger
 from ..utils import async_read, form_value_using_dict, interactive_edit
 
 # Standard imports
 import argparse
+import jira
+import http
 import os
 import sys
+import yaml
 
 
-class issue(abstract_complex_command):
-
-    def __init__(self, subparsers):
-        super().__init__('issue', 'Work with issues', subparsers)
-
+class dump_issue(abstract_subcommand):
 
     def register_subcommands(self, subsubparsers):
-        create_parser = subsubparsers.add_parser(
+        parser = subsubparsers.add_parser(
+            'dump'
+          , help='dump issue details (mostly for debugging purposes)'
+          , aliases=['du']
+          )
+        # TODO Add issue ID validator
+        parser.add_argument(
+            'issue'
+          , nargs='+'
+          , metavar='ISSUE-ID'
+          , help='issue to dump'
+          )
+        parser.set_defaults(
+            checker=self.check_options
+          , subcommand=self.run
+          )
+
+
+    def check_options(self, config, target_section, args):
+        config[target_section]['issues'] = args.issue
+
+
+    def run(self, conn, config):
+        for issue_id in config['issues']:
+            try:
+                issue = conn.issue(issue_id)
+                #print('dir(issue.fields)={}'.format(repr(dir(issue.fields))))
+                #print('dir(issue.raw)={}'.format(repr(dir(issue.raw))))
+                #print('issue.raw={}'.format(repr(issue.raw)))
+                raw = yaml.dump(issue.raw, default_flow_style=False)
+                print('raw={}'.format(raw))
+            except jira.JIRAError as ex:
+                if ex.status_code == http.HTTPStatus.NOT_FOUND:
+                    raise RuntimeError('Issue with ID `{}` not found'.format(issue_id))
+                raise
+
+
+class create_issue(abstract_subcommand):
+
+    def register_subcommands(self, subsubparsers):
+        parser = subsubparsers.add_parser(
             'create'
           , help='create a new issue'
           , aliases=['cr']
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-P'
           , '--project'
           , help='JIRA project to add an issue'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-t'
           , '--issue-type'
           , required=True
@@ -52,21 +92,21 @@ class issue(abstract_complex_command):
           , help='symbolic name/type or numeric ID of issue to create (use `list issue-types` ' \
                 'sub-command to get valid values), default `%(default)s`'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-p'
           , '--priority'
           , metavar='Name/#ID'
           , default='Minor'
           , help='priority for an issue -- use `list priorities` sub-command to get valid values, default `%(default)s`'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-s'
           , '--summary'
           , metavar='text'
           , required=True
           , help='summary text for an issue'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-f'
           , '--attachment'
           , nargs='+'
@@ -75,7 +115,7 @@ class issue(abstract_complex_command):
           , help='attach a given file(s) to a new issue'
           )
 
-        create_parser.add_argument(
+        parser.add_argument(
             '-e'
           , '--editor'
           , action='store_true'
@@ -84,28 +124,27 @@ class issue(abstract_complex_command):
                 os.environ['EDITOR'] if 'EDITOR' in os.environ else 'configured editor'
               )
           )
-        create_parser.add_argument(
+        parser.add_argument(
             '-w'
           , '--show-issue-uri'
           , action='store_true'
           , default=True
           , help='on exit print URI of the issue created'
           )
-        create_parser.add_argument(
+        parser.add_argument(
             'input'
           , nargs='?'
           , type=argparse.FileType('r')
           , default=sys.stdin
           , help='input file with issue description (STDIN if omitted)'
           )
-        create_parser.set_defaults(
-            checker=self._create_check_options
-          , func=self._create
+        parser.set_defaults(
+            checker=self.check_options
+          , subcommand=self.run
           )
 
 
-
-    def _create_check_options(self, config, target_section, args):
+    def check_options(self, config, target_section, args):
         # Check if `--project` is provided
         if args.project is not None:
             config[target_section]['project'] = args.project
@@ -124,7 +163,7 @@ class issue(abstract_complex_command):
 
         # Read description data if anything has specified
         assert args.input is not None
-        config[target_section]['description'] = async_read(args.input.fileno()).strip()
+        config[target_section]['description'] = '' if sys.stdin.isatty() else args.input.read().strip()
 
         # Is interactive edit has requested
         # NOTE Do interactive edit __before__ making a HTTP connection
@@ -132,14 +171,14 @@ class issue(abstract_complex_command):
             config[target_section]['description'] = interactive_edit(config[target_section]['description'])
 
 
-    def _create(self, conn, config):
+    def run(self, conn, config):
         # Make sure the project specified is really exists
         prj = conn.project(config['project'])
         if prj is None:
-            raise RuntimeError('Specified project "{}" not found'.format(config['project']))
+            raise RuntimeError('Specified project `{}` not found'.format(config['project']))
 
         if config['verbose']:
-            print('[DEBUG] Got project id for {}: {}'.format(config['project'], prj.id), file=sys.stderr)
+            get_logger().debug('Got project id for {}: {}'.format(config['project'], prj.id))
 
         # Prepare data for a new issue
         issue_dict = {
@@ -150,7 +189,7 @@ class issue(abstract_complex_command):
           }
 
         if config['verbose']:
-            print('[DEBUG] Going to create an issue w/ data: {}'.format(repr(issue_dict)), file=sys.stderr)
+            get_logger().debug('Going to create an issue w/ data: {}'.format(repr(issue_dict)))
 
         # Create it!
         issue = conn.create_issue(fields=issue_dict)
@@ -159,15 +198,21 @@ class issue(abstract_complex_command):
             raise RuntimeError('Fail to add an issue')
 
         if config['verbose']:
-            print('[DEBUG] Issue {} created'.format(issue.key), file=sys.stderr)
+            get_logger().debug('Issue {} created'.format(issue.key))
 
         # Attach files if any
         if config['attachments'] is not None:
             for a in config['attachments']:
                 if config['verbose']:
-                    print('[DEBUG] Going to attach file "{}" to issue {}'.format(a.name, issue.key), file=sys.stderr)
+                    get_logger().debug('Going to attach file "{}" to issue {}'.format(a.name, issue.key))
                 conn.add_attachment(issue, attachment=a)
 
         # Print URL to browse created task if needed
         if config['show-issue-uri']:
             print('{}/browse/{}'.format(config['server'], issue.key))
+
+
+class issue(abstract_complex_command):
+
+    def __init__(self, subparsers):
+        super().__init__('issue', 'Work with issues', subparsers)

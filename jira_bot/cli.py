@@ -18,6 +18,8 @@
 
 # Project specific imports
 import jira_bot
+import jira_bot.commands
+import jira_bot.logger
 
 # Standard imports
 import argparse
@@ -61,7 +63,7 @@ class Application(object):
         args, remaining_argv = config_parser.parse_known_args()
 
         # Collect configuration data from various places:
-        configs = list()
+        configs = []
         #  - is there any config file provided via CLI?
         if args.config_file:
             # Ok, lets use it
@@ -75,13 +77,13 @@ class Application(object):
                     configs.append(self._parse_config_file(config_file))
 
         # Merge configuration data normalizing URIs in section names
-        self.config = dict()
-        self.config['default'] = dict()
+        self.config = {}
+        self.config['default'] = {}
         for cfg in configs:
             for section in cfg.sections():
                 normalized_section = self._normalize_uri(section)
                 if normalized_section not in self.config:
-                    self.config[normalized_section] = dict()
+                    self.config[normalized_section] = {}
                 self.config[normalized_section].update(dict(cfg[section].items()))
 
         # Ok, now try to parse rest CLI options
@@ -97,6 +99,7 @@ class Application(object):
             '-v'
           , '--verbose'
           , action='store_true'
+          , default=False
           , help='verbose output'
           )
         parser.add_argument(
@@ -116,20 +119,21 @@ class Application(object):
           )
 
         subparsers = parser.add_subparsers(
-            title='sub-commands'
+            title='available commands'
           , description='The following command may appear after generic options.\nTo get help use `--help` after command name.'
           , help='Action'
-          , metavar='<COMMAND>'
+          , metavar='<command>'
           )
 
         # Loading modules provided by `jira_bot.commands` package
-        for command in jira_bot.supported_commands():
+        for command in jira_bot.supported_commands(jira_bot.commands, jira_bot.command.abstract_command):
             command(subparsers)
 
         try:
             args = parser.parse_args()
-        except RuntimeError as e:
-            parser.error(str(e))
+        except RuntimeError as ex:
+            #parser.error(str(ex))
+            assert 0
 
         # Merge CLI options w/ parsed configuration
         target_section = 'default'
@@ -160,8 +164,9 @@ class Application(object):
             self.config[target_section]['password'] = args.password
 
         # Check if `--verbose` is provided
-        if args.verbose is not None and args.verbose:
-            self.config['default']['verbose'] = 'true'
+        verbose = args.verbose is not None and args.verbose
+        self.config['default']['verbose'] = 'true' if verbose else 'false'
+        jira_bot.logger.setup_logger(verbose)
 
         # Check command specific options
         assert hasattr(args, 'instance') and args.instance is not None, 'Some command do not provide an instance??? Code review required!!'
@@ -211,13 +216,12 @@ class Application(object):
     def _make_jira_connection(self, config):
         # Make some SPAM
         if config['verbose']:
-            print(
-                '[DEBUG] Connecting to {} using {} {}'.format(
+            jira_bot.logger.get_logger().debug(
+                'Connecting to {} using {} {}'.format(
                     config['server']
                   , 'login `{}`'.format(config['username']) if 'username' in config else 'anonymous login'
                   , 'and password provided' if 'password' in config and config['password'] is not None else 'w/o password'
                   )
-                , file=sys.stderr
               )
         if 'username' in config:
             auth=(config['username'], config['password'])
@@ -245,14 +249,17 @@ class Application(object):
 # Main entry point
 #
 def main():
+    jira_bot.logger.setup_logger(False)
+
     try:
         a = Application()
         return a.run()
     except KeyboardInterrupt:
         return exitstatus.ExitStatus.failure
     except jira.JIRAError as ex:
-        print('Error: {}'.format(ex.text), file=sys.stderr)
+        jira_bot.logger.get_logger().error('{} [{}]'.format(ex.text, ex.status_code))
     except RuntimeError as ex:
-        print('Error: {}'.format(ex), file=sys.stderr)
+        jira_bot.logger.get_logger().error('zzzzzzzzz {}'.format(ex))
+        jira_bot.logger.get_logger().error('qqqqqqqqqqqqqq {}'.format(ex))
 
     return exitstatus.ExitStatus.failure
