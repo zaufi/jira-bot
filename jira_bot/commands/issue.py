@@ -19,7 +19,7 @@
 from ..command import abstract_complex_command, abstract_subcommand
 from ..grid import fancy_grid
 from ..logger import get_logger
-from ..utils import async_read, form_value_using_dict, interactive_edit
+from ..utils import form_value_using_dict, interactive_edit
 
 # Standard imports
 import argparse
@@ -56,18 +56,21 @@ class dump_issue(abstract_subcommand):
 
 
     def run(self, conn, config):
+        issues = []
         for issue_id in config['issues']:
             try:
-                issue = conn.issue(issue_id)
-                #print('dir(issue.fields)={}'.format(repr(dir(issue.fields))))
-                #print('dir(issue.raw)={}'.format(repr(dir(issue.raw))))
-                #print('issue.raw={}'.format(repr(issue.raw)))
-                raw = yaml.dump(issue.raw, default_flow_style=False)
-                print('raw={}'.format(raw))
+                issues.append(conn.issue(issue_id).raw)
+
             except jira.JIRAError as ex:
                 if ex.status_code == http.HTTPStatus.NOT_FOUND:
                     raise RuntimeError('Issue with ID `{}` not found'.format(issue_id))
                 raise
+
+        # Print every issue as a separate document
+        # TODO Check the format
+        for issue in issues:
+            print('---')
+            yaml.dump(issue, sys.stdout, default_flow_style=False)
 
 
 class create_issue(abstract_subcommand):

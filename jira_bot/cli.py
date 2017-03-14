@@ -184,10 +184,6 @@ class Application(object):
         self.config['default']['cmd'] = args.instance
 
         # Args seem Ok, ready to run
-        # TODO Print this on `-vvv`
-        #print('DEBUG args={}'.format(args))
-        #print('DEBUG config={}'.format(self.config))
-        #sys.exit(1)
 
 
     def _parse_config_file(self, config_file):
@@ -259,7 +255,6 @@ def main():
     except jira.JIRAError as ex:
         jira_bot.logger.get_logger().error('{} [{}]'.format(ex.text, ex.status_code))
     except RuntimeError as ex:
-        jira_bot.logger.get_logger().error('zzzzzzzzz {}'.format(ex))
-        jira_bot.logger.get_logger().error('qqqqqqqqqqqqqq {}'.format(ex))
+        jira_bot.logger.get_logger().error('{}'.format(ex))
 
     return exitstatus.ExitStatus.failure

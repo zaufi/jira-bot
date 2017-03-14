@@ -1,3 +1,4 @@
 exitstatus
 jira
+pyyaml
 setuptools
