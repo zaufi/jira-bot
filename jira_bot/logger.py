@@ -33,8 +33,8 @@ def setup_logger(verbose):
 
         # Create logger
         _logger = logging.getLogger('jira-bot')
-        _logger.setLevel(logging.DEBUG if verbose else logging.INFO)
 
+    _logger.setLevel(logging.DEBUG if verbose else logging.INFO)
 
     # Reset handler
     if _handler is not None:

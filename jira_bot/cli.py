@@ -36,7 +36,7 @@ class Application(object):
     '''
         Application class to to the job.
 
-        Each command implemented as a "plugin".
+        Each command implemented as a plug-in.
         Constructor analyze arguments passed via CLI and merge them w/
         parameters came from configuration file(s).
 
@@ -58,7 +58,7 @@ class Application(object):
             '-c'
           , '--config-file'
           , help='specify config file to use'
-          , metavar="FILE"
+          , metavar='FILE'
           )
         args, remaining_argv = config_parser.parse_known_args()
 
@@ -221,7 +221,14 @@ class Application(object):
               )
         if 'username' in config:
             auth=(config['username'], config['password'])
-            return jira.JIRA(options={'server': config['server'], 'check_update': False }, basic_auth=auth)
+            return jira.JIRA(
+                options={
+                    'server': config['server']
+                  , 'check_update': False
+                  , 'rest_api_version': '2'
+                  }
+              , basic_auth=auth
+              )
 
         # Else use anonymous login
         return jira.JIRA(options={'server': config['server'], 'check_update': False })
