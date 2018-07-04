@@ -44,7 +44,7 @@ class Application(object):
         everything that needed to execute a requested command.
 
         Config file consists from `[default]` section and possible few
-        sections desribing connection parameters to server(s), so you don't
+        sections describing connection parameters to server(s), so you don't
         need them to pass via CLI.
     '''
 
@@ -169,14 +169,15 @@ class Application(object):
         jira_bot.logger.setup_logger(verbose)
 
         # Check command specific options
-        assert hasattr(args, 'instance') and args.instance is not None, 'Some command do not provide an instance??? Code review required!!'
+        if not hasattr(args, 'instance') or args.instance is None:
+            raise RuntimeError('No command given')
 
         args.instance.check_options(self.config, target_section, args)
 
         # Setting `verbose` flag to be a 'shortcut' for corresponding configuration option
         self.config[target_section]['verbose'] = 'verbose' in self.config['default'] and self._try_get_bool(self.config['default']['verbose']) or False
 
-        # Remember selected `server` as a key in current configurtation section
+        # Remember selected `server` as a key in the current configuration section
         self.config[target_section]['server'] = target_section
 
         # TODO Validate option values?
@@ -257,10 +258,13 @@ def main():
     try:
         a = Application()
         return a.run()
+
     except KeyboardInterrupt:
         return exitstatus.ExitStatus.failure
+
     except jira.JIRAError as ex:
         jira_bot.logger.get_logger().error('{} [{}]'.format(ex.text, ex.status_code))
+
     except RuntimeError as ex:
         jira_bot.logger.get_logger().error('{}'.format(ex))
 

@@ -18,13 +18,9 @@
 # Project specific imports
 
 # Standard imports
-import errno
 import importlib
 import inspect
 import pkgutil
-import os
-import subprocess
-import tempfile
 
 
 def list_modules(package):

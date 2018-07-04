@@ -23,6 +23,7 @@ from ..utils import form_value_using_dict, interactive_edit
 
 # Standard imports
 import argparse
+import datetime
 import jira
 import http
 import os
@@ -110,6 +111,12 @@ class create_issue(abstract_subcommand):
           , help='summary text for an issue'
           )
         parser.add_argument(
+            '-d'
+          , '--due-date'
+          , metavar='YYYY-MM-DD'
+          , help='set due date for the issue (supported special value `tomorrow`)'
+          )
+        parser.add_argument(
             '-f'
           , '--attachment'
           , nargs='+'
@@ -168,6 +175,10 @@ class create_issue(abstract_subcommand):
         assert args.input is not None
         config[target_section]['description'] = '' if sys.stdin.isatty() else args.input.read().strip()
 
+        if hasattr(args, 'due_date'):
+            # TODO Validate the value
+            config[target_section]['due-date'] = args.due_date
+
         # Is interactive edit has requested
         # NOTE Do interactive edit __before__ making a HTTP connection
         if args.editor:
@@ -190,6 +201,14 @@ class create_issue(abstract_subcommand):
           , 'description': config['description']
           , 'issuetype': form_value_using_dict(config, 'issuetype', lambda: conn.issue_types())
           }
+
+        if 'due-date' in config:
+            # Check for the special value `tomorrow`
+            if config['due-date'] == 'tomorrow':
+                tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+                config['due-date'] = tomorrow.strftime('%Y-%m-%d')
+
+            issue_dict['duedate'] = config['due-date']
 
         if config['verbose']:
             get_logger().debug('Going to create an issue w/ data: {}'.format(repr(issue_dict)))
