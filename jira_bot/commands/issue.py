@@ -171,9 +171,9 @@ class create_issue(abstract_subcommand):
         config[target_section]['attachments'] = args.attachment if args.attachment is not None else None
         config[target_section]['issuetype'] = args.issue_type
 
-        # Read description data if anything has specified
+        # Read description data from the input stream
         assert args.input is not None
-        config[target_section]['description'] = '' if sys.stdin.isatty() else args.input.read().strip()
+        config[target_section]['description'] = args.input.read().strip()
 
         if hasattr(args, 'due_date'):
             # TODO Validate the value
