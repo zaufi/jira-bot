@@ -19,4 +19,4 @@
 from .plugin_loader import supported_commands
 
 # Set PEP396 version attribute
-__version__ = '2.1.0'
+__version__ = '2.1.1'
